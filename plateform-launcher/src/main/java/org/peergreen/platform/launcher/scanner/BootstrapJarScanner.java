@@ -38,6 +38,7 @@ public class BootstrapJarScanner implements BundleScanner {
                             bundles.add(resource);
                         }
                     }
+                    jarFile.close();
                 } catch (IOException e) {
                     // TODO print a warning
                 }
