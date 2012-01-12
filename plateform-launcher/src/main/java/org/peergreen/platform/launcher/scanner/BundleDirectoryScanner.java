@@ -3,6 +3,8 @@ package org.peergreen.platform.launcher.scanner;
 import org.peergreen.platform.launcher.BundleScanner;
 
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -17,25 +19,38 @@ import java.util.Collections;
  * To change this template use File | Settings | File Templates.
  */
 public class BundleDirectoryScanner implements BundleScanner {
+
+    /**
+     * Browsed directory.
+     */
+    private File directory;
+
+    public BundleDirectoryScanner(File directory) {
+        this.directory = directory;
+    }
+
     public Collection<URL> scan() {
-        File base = new File(System.getProperty("user.dir"));
-        File bundlesDir = new File(base, "bundles");
-        if (!bundlesDir.isDirectory()) {
+        if (!directory.isDirectory()) {
             return Collections.emptyList();
         }
 
         Collection<URL> bundles = new ArrayList<URL>();
 
-        for (File child : bundlesDir.listFiles()) {
-            if (child.getName().endsWith(".jar")) {
-                try {
-                    bundles.add(child.toURI().toURL());
-                } catch (MalformedURLException e) {
-                    // TODO prints a warning
-                }
+        for (File child : directory.listFiles(new JarFileFilter())) {
+            try {
+                bundles.add(child.toURI().toURL());
+            } catch (MalformedURLException e) {
+                // TODO prints a warning
             }
         }
 
         return bundles;
+    }
+
+    private class JarFileFilter implements FileFilter {
+
+        public boolean accept(File file) {
+            return file.getName().endsWith(".jar");
+        }
     }
 }

@@ -16,7 +16,7 @@
   <properties>
     <configadmin.version>1.2.8</configadmin.version>
     <felix.version>3.0.2</felix.version>
-    <gogo.version>0.6.0</gogo.version>
+    <gogo.version>0.10.0</gogo.version>
   </properties>
 
   <dependencies>
@@ -27,6 +27,11 @@
     <dependency>
       <groupId>org.peergreen.platform</groupId>
       <artifactId>platform-apis</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.peergreen.platform.services</groupId>
+      <artifactId>platform-grizzly</artifactId>
       <version>${project.version}</version>
     </dependency>
 
@@ -44,7 +49,7 @@
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.gogo.command</artifactId>
-      <version>${gogo.version}</version>
+      <version>0.12.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.felix</groupId>

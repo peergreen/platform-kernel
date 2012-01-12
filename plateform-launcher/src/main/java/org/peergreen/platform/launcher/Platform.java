@@ -1,18 +1,24 @@
 package org.peergreen.platform.launcher;
 
+import org.apache.felix.service.command.CommandProcessor;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
+import org.osgi.framework.Constants;
 import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.peergreen.platform.info.PlatformInfo;
 import org.peergreen.platform.launcher.info.DefaultPlatformInfo;
 import org.peergreen.platform.launcher.scanner.BootstrapJarScanner;
 import org.peergreen.platform.launcher.scanner.BundleDirectoryScanner;
+import org.peergreen.platform.launcher.shell.Infos;
 
+import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 
 /**
@@ -45,12 +51,17 @@ public class Platform {
         // Find the bundles to be installed
         List<BundleScanner> scanners = new ArrayList<BundleScanner>();
         scanners.add(new BootstrapJarScanner());
-        scanners.add(new BundleDirectoryScanner());
+        scanners.add(new BundleDirectoryScanner(getUserBundlesDirectory()));
 
         for (BundleScanner scanner : scanners) {
             installables.addAll(scanner.scan());
         }
         
+    }
+
+    private File getUserBundlesDirectory() {
+        File user = new File(System.getProperty("user.dir"));
+        return new File(user, "bundles");
     }
 
     public void start() throws Exception {
@@ -66,9 +77,9 @@ public class Platform {
         // Start the framework (going into ACTIVE state)
         framework.start();
         
-        // Start the installed bundles
+        // Start the installed bundles, respecting the activation policy if needed
         for (Bundle bundle : bundles) {
-            bundle.start();
+            bundle.start(Bundle.START_ACTIVATION_POLICY);
         }
 
         // TODO register our services
@@ -78,9 +89,19 @@ public class Platform {
                                         info,
                                         null);
 
+        registerShell(info);
+
 
         // Wait for the framework stop indefinitely
         framework.waitForStop(0);
+    }
+
+    private void registerShell(PlatformInfo info) {
+        Dictionary<String, Object> dict = new Hashtable<String, Object>();
+        dict.put("osgi.command.scope", "info");
+        dict.put("osgi.command.function", Infos.FUNCTIONS);
+
+        platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
     }
 
     private FrameworkFactory findFrameworkFactory() throws Exception {
