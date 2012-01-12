@@ -19,8 +19,7 @@ import java.util.jar.JarFile;
 public class BootstrapJarScanner implements BundleScanner {
     public Collection<URL> scan() {
         String classpath = System.getProperty("java.class.path");
-        String separator = File.pathSeparator;
-        String[] paths = classpath.split(separator);
+        String[] paths = classpath.split(File.pathSeparator);
         Collection<URL> bundles = new ArrayList<URL>();
 
         for (String path : paths) {
