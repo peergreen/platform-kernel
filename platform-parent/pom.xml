@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.peergreen.platform</groupId>
+  <groupId>com.peergreen.prototype.platform</groupId>
   <artifactId>platform-parent</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <properties>
-    <ipojo.version>1.6.2</ipojo.version>
-    <maven-ipojo-plugin.version>1.6.0</maven-ipojo-plugin.version>
-    <osgi.version>4.2.0</osgi.version>
+    <ipojo.version>1.8.4</ipojo.version>
+    <maven-ipojo-bnd-plugin.version>1.8.6</maven-ipojo-bnd-plugin.version>
+    <osgi.version>5.0.0</osgi.version>
   </properties>
 
   <dependencyManagement>
@@ -38,16 +38,6 @@
 
   <build>
 
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.felix</groupId>
-          <artifactId>maven-ipojo-plugin</artifactId>
-          <version>${maven-ipojo-plugin.version}</version>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -60,24 +50,21 @@
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
+        <version>2.3.7</version>
         <extensions>true</extensions>
         <configuration>
           <instructions>
             <_include>-target/classes/META-INF/${project.artifactId}.bnd</_include>
+            <_plugin>org.apache.felix.ipojo.bnd.PojoizationPlugin;metadata=${basedir}/src/main/resources/metadata.xml;use-local-schemas=true</_plugin>
           </instructions>
         </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>maven-ipojo-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>ipojo-bundle</goal>
-            </goals>
-          </execution>
-        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>bnd-ipojo-plugin</artifactId>
+            <version>${maven-ipojo-bnd-plugin.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
       
     </plugins>

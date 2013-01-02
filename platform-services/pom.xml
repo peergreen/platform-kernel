@@ -2,19 +2,18 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>platform-parent</artifactId>
+    <groupId>org.peergreen.platform</groupId>
+    <version>1.0-SNAPSHOT</version>
+    <relativePath>../platform-parent/pom.xml</relativePath>
+  </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.peergreen</groupId>
-  <artifactId>platform-reactor</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <groupId>org.peergreen.platform.services</groupId>
+  <artifactId>platform-services</artifactId>
   <packaging>pom</packaging>
+  
 
-  <modules>
-    <module>platform-parent</module>
-    <module>platform-apis</module>
-    <module>platform-launcher</module>
-    <module>platform-bootstrap</module>
-    <module>platform-services</module>
-  </modules>
-    
+
 </project>

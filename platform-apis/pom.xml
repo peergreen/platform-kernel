@@ -5,9 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.peergreen.platform</groupId>
+    <groupId>com.peergreen.prototype.platform</groupId>
     <artifactId>platform-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <relativePath>../platform-parent/pom.xml</relativePath>
   </parent>
 
   <artifactId>platform-apis</artifactId>
