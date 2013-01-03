@@ -16,139 +16,76 @@
 package com.peergreen.platform.bootstrap;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
-
+/**
+ * JarInJar URL connection.
+ * It allows to get resources from jar located in jar.(Only one level is supported of jar in jar).
+ * @author Florent Benoit
+ */
 public class JarInJarURLConnection extends URLConnection {
 
-    private final String firstJarName;
-    private final String subJarName;
-    private final String subjarEntryName;
-    private InputStream is;
-    private long length = -1;
+    /**
+     * Input stream of this connection.
+     */
+    private InputStream inputStream;
 
-    protected JarInJarURLConnection(URL url) {
+    /**
+     * Length of the content specified by this URL.
+     */
+    private final long length = -1;
+
+    /**
+     * Repository of URLs.
+     */
+    private final EntriesRepository entriesRepository;
+
+
+    /**
+     * URL is following this format : jarinjar://<thefirst.jar>!<sub.jar>!/<entry in the subjar>
+     * @param url the URL to parse
+     */
+    protected JarInJarURLConnection(URL url, EntriesRepository entriesRepository) throws IOException {
         super(url);
-
-        String urlString = "/".concat(url.getHost()).concat(url.getPath());
-
-        // parse url
-        // First jar
-        int firstJarIndex = urlString.indexOf("!");
-        firstJarName = urlString.substring(0, firstJarIndex);
-
-        // subjar
-        int embeddedEntry = urlString.lastIndexOf("!");
-        subJarName = urlString.substring(firstJarIndex + 1, embeddedEntry);
-
-        // entry in subjar
-        subjarEntryName = urlString.substring(embeddedEntry + 1);
-
-
-
+        this.entriesRepository = entriesRepository;
     }
 
+    /**
+     * Connect to the JarFile by extracting the inputstream.
+     * @throws IOException if jar file cannot be analyzed.
+     */
     @Override
-    public void connect() throws IOException {
+    public void connect() throws IOException  {
         if (!connected) {
-            //Open jar
-            JarFile jarFile = new JarFile(firstJarName);
 
-            ZipEntry entry = jarFile.getEntry(subJarName);
-
-            // read jar input stream
-            ZipInputStream jarInputStream = new ZipInputStream(jarFile.getInputStream(entry));
-            ZipEntry foundEntry = jarInputStream.getNextEntry();
-            boolean found = false;
-            while (foundEntry != null && !found) {
-                if (subjarEntryName.equals(foundEntry.getName())) {
-                    found = true;
-                    break;
-                }
-                foundEntry = jarInputStream.getNextEntry();
-            }
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] b = new byte[4096];
-            if (found) {
-                int len;
-                while ((len = jarInputStream.read(b, 0, b.length)) != -1) {
-                    baos.write(b, 0, len);
-                }
-                is = new ByteArrayInputStream(baos.toByteArray());
-                this.length = foundEntry.getSize();
-            }
-
-            jarInputStream.close();
-            jarFile.close();
-            if (!found) {
+            ByteEntry byteEntry = entriesRepository.getByteEntry(url);
+            if (byteEntry == null) {
                 throw new IOException("Unable to find entry " + url + "");
             }
-
+            this.inputStream = new ByteArrayInputStream(byteEntry.getBytes());
         }
-
     }
 
+    /**
+     * If we've not yet analyze the jar file, parse it before returning the stream
+     * @return inputstream of this URL.
+     * @throws IOException if connecting is failing
+     */
     @Override
     public InputStream getInputStream() throws IOException {
         if (!connected) {
             connect();
         }
-
-        return is;
+        return inputStream;
     }
 
 
-
-
-    public ByteEntry readBytes() throws IOException {
-        //Open jar
-        JarFile jarFile = new JarFile(firstJarName);
-
-        ZipEntry entry = jarFile.getEntry(subJarName);
-
-        // read jar input stream
-        ZipInputStream jarInputStream = new ZipInputStream(jarFile.getInputStream(entry));
-        ZipEntry foundEntry = jarInputStream.getNextEntry();
-        boolean found = false;
-        while (foundEntry != null && !found) {
-            if (subjarEntryName.equals(foundEntry.getName())) {
-                found = true;
-                break;
-            }
-            foundEntry = jarInputStream.getNextEntry();
-        }
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] b = new byte[1024];
-        if (found) {
-            int len;
-            while ((len = jarInputStream.read(b, 0, b.length)) != -1) {
-                baos.write(b, 0, len);
-            }
-            ByteEntry byteEntry = new ByteEntry();
-            byteEntry.bytes = baos.toByteArray();
-            return byteEntry;
-        }
-
-        jarInputStream.close();
-        jarFile.close();
-        if (!found) {
-            return null;
-        }
-        return null;
-
-    }
-
-
-
+    /**
+     * @return length of the content specified by this URL connection
+     */
     @Override
     public long getContentLengthLong() {
         return length;

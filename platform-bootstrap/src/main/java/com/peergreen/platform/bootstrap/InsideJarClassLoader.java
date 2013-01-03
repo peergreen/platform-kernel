@@ -16,7 +16,6 @@
 package com.peergreen.platform.bootstrap;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -25,63 +24,81 @@ import java.security.PrivilegedExceptionAction;
 import java.security.SecureClassLoader;
 import java.util.Enumeration;
 
-
+/**
+ * JarInJar classloader allowing to load resources and classes from embedding jar in a root jar.
+ * @author Florent Benoit
+ */
 public class InsideJarClassLoader extends SecureClassLoader {
 
+    /**
+     * Repository containing the byte entries.
+     */
     private final EntriesRepository entriesRepository;
-    private final URL rootJar;
+
+    /**
+     * AccessControlContext used to define the classes.
+     */
     private final AccessControlContext accessControlContext;
 
-    public InsideJarClassLoader(URL rootJar, ClassLoader parent) throws IOException, URISyntaxException {
+    /**
+     * Build a new classloader with the given parent classloader and the given repository.
+     * @param parent the parent classloader
+     * @param entriesRepository the repository used to get the classes/resources
+     */
+    public InsideJarClassLoader(ClassLoader parent, EntriesRepository entriesRepository) {
         super(parent);
-        this.entriesRepository = new EntriesRepository(rootJar);
-        long t0 = System.currentTimeMillis();
-        entriesRepository.scan();
-        long tEnd = System.currentTimeMillis();
-        System.out.println("diff = " + (tEnd - t0) + " ms");
+        this.entriesRepository = entriesRepository;
         this.accessControlContext = AccessController.getContext();
-        this.rootJar = rootJar;
 
     }
 
 
+    /**
+     * Try to find the given class specified by its name.
+     * @return the defined class if found.
+     */
     @Override
     protected Class<?> findClass(final String name) throws ClassNotFoundException {
         try {
             return AccessController.doPrivileged(
                     new PrivilegedExceptionAction<Class<?>>() {
+                        @Override
                         public Class<?> run() throws ClassNotFoundException {
-                            ByteEntry byteEntry;
-                            try {
-                                byteEntry = entriesRepository.readBytes(name);
-                            } catch (IOException e) {
-                                throw new ClassNotFoundException("Unable to find class", e);
+                            ByteEntry byteEntry = entriesRepository.getByteEntry(name);
+                            if (byteEntry == null) {
+                                throw new ClassNotFoundException("Unable to find class '" +  name + "'.");
                             }
 
-                            if (byteEntry != null) {
-                                //CodeSource cs = new CodeSource(rootJar, (CodeSigner[]) null);
-                                try {
-                                return defineClass(name, byteEntry.bytes, 0, byteEntry.bytes.length, byteEntry.codesource);
-                                } finally {
-                                    entriesRepository.removeEntry(name);
-                                }
-                            }
-                            return null;
+                            // Define the class
+                            Class<?> clazz = defineClass(name, byteEntry.getBytes(), 0, byteEntry.getBytes().length, byteEntry.getCodesource());
+
+                            // Remove associated bytecode no longer needed
+                            entriesRepository.removeClassEntry(name);
+
+                            // return the class.
+                            return clazz;
                         }
                     }, accessControlContext);
         } catch (PrivilegedActionException e) {
-           throw new ClassNotFoundException("error", e);
+           throw new ClassNotFoundException("Unable to find the class with name '" + name + "'.", e);
         }
 
     }
 
+    /**
+     * Try to find an URL providing the specified resource name.
+     * @param name to resource to search
+     */
     @Override
     protected URL findResource(String name) {
         return entriesRepository.getURL(name);
 
     }
 
-
+    /**
+     * Try to find all matching URLs for the given resource name.
+     * @param name the name of the resource
+     */
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
         return entriesRepository.getURLs(name);

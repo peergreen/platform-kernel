@@ -17,10 +17,45 @@ package com.peergreen.platform.bootstrap;
 
 import java.security.CodeSource;
 
+/**
+ * The ByteEntry store the bytecode of a class and its associated codesource.
+ * By using a codesource we can define classes with it and then classes can get their URL location
+ * @author Florent Benoit
+ */
 public class ByteEntry {
 
-    public CodeSource codesource;
+    /**
+     * Codesource of this entry.
+     */
+    private final CodeSource codesource;
 
-    public byte[] bytes;
+    /**
+     * Bytes of this entry.
+     */
+    private final byte[] bytes;
+
+    /**
+     * Defines a new entry
+     * @param codeSource the associated codesource
+     * @param bytes the array of bytes that is containing the class bytecode
+     */
+    public ByteEntry(CodeSource codeSource, byte[] bytes) {
+        this.codesource = codeSource;
+        this.bytes = bytes;
+    }
+
+    /**
+     * @return the codesource
+     */
+    public CodeSource getCodesource() {
+        return codesource;
+    }
+
+    /**
+     * @return the bytecode of the class to define
+     */
+    public byte[] getBytes() {
+        return bytes;
+    }
 
 }

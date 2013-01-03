@@ -15,62 +15,111 @@
  */
 package com.peergreen.platform.bootstrap;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
 import java.net.URL;
 
+/**
+ * Bootstrap class used to load delegating class.
+ * @author Florent Benoit
+ */
 public class Bootstrap {
 
+    /**
+     * Keep arguments of the bootstrap in order to send them to the delegating class.
+     */
     private final String[] args;
 
+    /**
+     * No public constructor as it's only used by this class.
+     * @param args the arguments of this bootstrap
+     */
     protected Bootstrap(String[] args) {
         this.args = args;
     }
 
 
-    public void start() throws ClassNotFoundException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, IOException, URISyntaxException {
+    /**
+     * Starts the bootstrap by invoking the main method of the delegating class
+     * @throws BootstrapException if there is a failure.
+     */
+    public void start() throws BootstrapException {
 
-        // Register our factory
-        //FIXME: try hack if existing factory or if we can accept Felix/Equinox factories
-        URL.setURLStreamHandlerFactory(new BootstrapURLStreamHandlerFactory());
+        // Gets the location of the jar containing this class
+        URL url = getLocation();
 
+        // Scan entries in our all-in-one jar.
+        EntriesRepository entriesRepository = new EntriesRepository(url);
+
+        // Register our URL factory
+        URL.setURLStreamHandlerFactory(new BootstrapURLStreamHandlerFactory(entriesRepository));
+
+        // Scan entries
+        long t0 = System.currentTimeMillis();
+        entriesRepository.scan();
+        long tEnd = System.currentTimeMillis();
+        System.out.println("Time to scan entries : " + (tEnd - t0) + " ms");
 
         // Create classloader with embedded jars
-        ClassLoader classLoader = getClassLoader();
+        ClassLoader classLoader = getClassLoader(entriesRepository);
 
-        // Load framework launcher
-        Class<?> mainClass = classLoader.loadClass("com.peergreen.platform.launcher.Platform");
-        if (mainClass == null) {
-            System.out.println("class not found");
-            return;
+        //FIXME: Allows to specify class to load
+        // Class to load
+        String classname = "com.peergreen.platform.launcher.Platform";
+
+        // Load delegating class
+        Class<?> mainClass = null;
+        try {
+            mainClass = classLoader.loadClass(classname);
+        } catch (ClassNotFoundException e) {
+            throw new BootstrapException("Unable to load the class '" + classname + "'.", e);
         }
-        Method mainMethod = mainClass.getMethod("main",String[].class);
 
-        // call main
-        mainMethod.invoke(null, (Object) args);
+        // Gets main method
+        Method mainMethod = null;
+        try {
+            mainMethod = mainClass.getMethod("main",String[].class);
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new BootstrapException("The delegating class '" + classname + "' to launch has no main(String[] args) method available.", e);
+        }
+
+        // Call main
+        try {
+            mainMethod.invoke(null, (Object) args);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new BootstrapException("Unable to call the main method of the delegating class '" + classname + "'.", e);
+        }
 
     }
 
+    /**
+     * Gets the URL of our location.
+     * @return location
+     */
+    protected URL getLocation() {
+        // gets the URL of our bootstrap jar through our protection domain
+        return Bootstrap.class.getProtectionDomain().getCodeSource().getLocation();
+    }
 
-    protected ClassLoader getClassLoader() throws IOException, URISyntaxException {
+    /**
+     * Build a classloader for this bootstrap.
+     * @return a classloader that can access classes located in jars inside jar.
+     * @throws BootstrapException if classloader cannot be built
+     */
+    protected ClassLoader getClassLoader(EntriesRepository entriesRepository) throws BootstrapException {
 
-        // get the bundles of the launcher
-        URL url = new File("/Users/benoitf/Documents/workspace/platform/platform-bootstrap/target/platform-bootstrap-1.0-SNAPSHOT.jar").toURI().toURL();
+        // Create the classloader using current context classloader as our parent
+        ClassLoader insideJarClassLoader = new InsideJarClassLoader(Thread.currentThread().getContextClassLoader(), entriesRepository);
 
-
-        ClassLoader urlClassLoader = new InsideJarClassLoader(url, Thread.currentThread().getContextClassLoader());
-
-
-        return urlClassLoader;
+        // return classloader
+        return insideJarClassLoader;
     }
 
 
 
     /**
-     * @param args
+     * Starts the bootstrap which delegates the call to another class.
+     * @param args the arguments of this bootstrap launcher
      */
     public static void main(String[] args) throws Exception {
         Bootstrap bootstrap = new Bootstrap(args);

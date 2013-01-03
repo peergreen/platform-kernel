@@ -17,10 +17,10 @@ package com.peergreen.platform.bootstrap;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.security.CodeSigner;
 import java.security.CodeSource;
 import java.util.ArrayList;
@@ -34,104 +34,168 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+/**
+ * Repository for all entries that are found in the jars in the root jar.
+ * @author Florent Benoit
+ */
 public class EntriesRepository {
 
+    /**
+     * Default buffer size for reading content of the Jar.
+     */
+    private static final int BUFFER = 4096;
+
+    /**
+     * Lib folder.
+     */
+    private static final String LIB_FOLDER = "lib/";
+
+    /**
+     * .jar extension.
+     */
+    private static final String JAR_EXTENSION = ".jar";
+
+    /**
+     * Root URL.
+     */
     private final URL rootURL;
+
+    /**
+     * Mapping between a resource name and the associated URLs referencing this entry.
+     */
     private final Map<String, List<URL>> urlEntries;
-    private final Map<String, ByteEntry> buffers;
 
+    /**
+     * Mapping between <the name of a class (for .class resource) and URL for other resources> and <the byte entry>.
+     */
+    private final Map<String, ByteEntry> byteEntries;
 
+    /**
+     * Build a new repository around the given root URL.
+     * @param rootURL the root URL.
+     */
     public EntriesRepository(final URL rootURL) {
         this.rootURL = rootURL;
         this.urlEntries = new HashMap<String, List<URL>>();
-        this.buffers = new HashMap<String, ByteEntry>();
+        this.byteEntries = new HashMap<String, ByteEntry>();
     }
 
-    //FIXME : no close of resources
-    public void scan() throws IOException, URISyntaxException {
+    public void scan() throws BootstrapException {
         // It's a jar file so scan entries
-        JarFile jarFile = new JarFile(rootURL.toURI().getPath());
+        try (JarFile jarFile = new JarFile(rootURL.toURI().getPath())) {
 
-        // We search jar in jars
-        Enumeration<JarEntry> entries = jarFile.entries();
-        while (entries.hasMoreElements()) {
-            JarEntry entry = entries.nextElement();
-            if (!entry.getName().startsWith("lib")) {
-                continue;
-            }
+            // We search jar in jars
+            Enumeration<JarEntry> entries = jarFile.entries();
 
-            // we have inner jars
-            if (!entry.getName().endsWith(".jar")) {
-                continue;
-            }
+            // Scan each entry
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
 
-            // Use Zip and not Jar else it skip MANIFEST.MF entry
-            ZipInputStream jarInputStream = new ZipInputStream(jarFile.getInputStream(entry));
-            ZipEntry jarEntry = jarInputStream.getNextEntry();
-            while (jarEntry != null) {
-                String name = jarEntry.getName();
-                URL url = getURL(rootURL, entry.getName(), jarEntry.getName());
-
-                List<URL> currentList = urlEntries.get(name);
-                if (currentList == null) {
-                    currentList = new ArrayList<URL>();
-                    urlEntries.put(name, currentList);
+                // Ignore entries that are not in the lib folder
+                if (!entry.getName().startsWith(LIB_FOLDER)) {
+                    continue;
                 }
-                currentList.add(url);
-                if (name.endsWith(".class")) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] b = new byte[4096];
 
-                    int len;
-                    while ((len = jarInputStream.read(b, 0, b.length)) != -1) {
-                        baos.write(b, 0, len);
+                // Select only inner jars
+                if (!entry.getName().endsWith(JAR_EXTENSION)) {
+                    continue;
+                }
+
+                // Use Zip* and not Jar* else it skip META-INF/MANIFEST.MF entries
+                try (InputStream is = jarFile.getInputStream(entry); ZipInputStream zipInputStream = new ZipInputStream(is)) {
+
+                    // Get current entry in subjar
+                    ZipEntry subZipEntry = zipInputStream.getNextEntry();
+
+                    // loop on all entries
+                    while (subZipEntry != null) {
+
+                        // get Entry Name
+                        String subName = subZipEntry.getName();
+                        URL url = getURL(entry.getName(), subName);
+
+                        List<URL> currentList = urlEntries.get(subName);
+                        if (currentList == null) {
+                            currentList = new ArrayList<URL>();
+                            urlEntries.put(subName, currentList);
+                        }
+                        currentList.add(url);
+
+                        // Now, gets bytes of the subzip entry
+                        try(ByteArrayOutputStream baos = new ByteArrayOutputStream();) {
+                            byte[] b = new byte[BUFFER];
+
+                            int len;
+                            while ((len = zipInputStream.read(b, 0, b.length)) != -1) {
+                                baos.write(b, 0, len);
+                            }
+                            byte[] bytes = baos.toByteArray();
+
+                            // Build URL of the subJar
+                            URL jarURL = new URL("jar:" + rootURL.toExternalForm() + "!/" + entry.getName());
+
+                            // Build associated codesource
+                            CodeSource codesource = new CodeSource(jarURL, (CodeSigner[]) null);
+
+                            // Create byteEntry
+                            ByteEntry byteEntry = new ByteEntry(codesource, bytes);
+
+                            // add class with the name of the class
+                            if (subName.endsWith(".class")) {
+                                String className = subName.substring(0, subName.length() - 6).replace("/", ".");
+                                byteEntries.put(className, byteEntry);
+                            } else if (!subName.endsWith("/")){
+                                // Add only content, not the directories
+                                byteEntries.put(url.toExternalForm(), byteEntry);
+                            }
+                        }
+                        subZipEntry = zipInputStream.getNextEntry();
+
                     }
-                    byte[] bytes = baos.toByteArray();
-                    String entryName = name.substring(0, name.length() - 6).replace("/", ".");
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
 
-                    ByteEntry byteEntry = new ByteEntry();
-                    byteEntry.bytes = bytes;
-                    URL jarURL = new URL("jar:" + rootURL.toExternalForm() + "!/" + entry.getName());
-                    byteEntry.codesource = new CodeSource(jarURL, (CodeSigner[]) null);
 
-                    buffers.put(entryName, byteEntry);
                 }
-                jarEntry = jarInputStream.getNextEntry();
-
             }
-
-
-
-
-
+        } catch (IOException | URISyntaxException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
         }
-
-
     }
 
-    public void removeEntry(String name) {
-        buffers.remove(name);
+    /**
+     * Remove the given class entry.
+     * @param classname the name of the class to remove bytecode
+     */
+    public void removeClassEntry(String classname) {
+        byteEntries.remove(classname);
     }
 
-    public ByteEntry readBytes(String name) throws IOException {
-        ByteEntry byteEntry = buffers.get(name);
-        if (byteEntry != null) {
-            return byteEntry;
-        }
-
-        String resourceName = name.replace(".", "/").concat(".class");
-
-        List<URL> urls = urlEntries.get(resourceName);
-        if (urls == null || urls.size() == 0) {
-            return null;
-        }
-        URL url = urls.get(0);
-        URLConnection connection = url.openConnection();
-        JarInJarURLConnection jarInJarURLConnection = (JarInJarURLConnection) connection;
-
-        return jarInJarURLConnection.readBytes();
+    /**
+     * Gets bytes from the given URL.
+     * @param url the given URL
+     * @return the associated byte entry
+     */
+    public ByteEntry getByteEntry(URL url) {
+        return byteEntries.get(url.toExternalForm());
     }
 
+    /**
+     * Gets bytes from the given classname.
+     * @param classname the given name of the class
+     * @return the associated byte entry
+     */
+    public ByteEntry getByteEntry(String classname) {
+        return byteEntries.get(classname);
+    }
+
+    /**
+     * Gets the first matching URL for the given resource name.
+     * @param name the given resource name to search
+     * @return the URL
+     */
     public URL getURL(String name) {
         List<URL> urls = urlEntries.get(name);
         if (urls == null || urls.size() == 0) {
@@ -141,6 +205,11 @@ public class EntriesRepository {
 
     }
 
+    /**
+     * Gets all the matching URL for the given resource name.
+     * @param name the given resource name to search
+     * @return the URLs
+     */
     public Enumeration<URL> getURLs(String name) {
         List<URL> urls = urlEntries.get(name);
         if (urls == null || urls.size() == 0) {
@@ -151,9 +220,15 @@ public class EntriesRepository {
     }
 
 
-
-    protected URL getURL(URL rootURL, String jar, String name) throws MalformedURLException {
-        URL url =  new URL("jarinjar:/" + rootURL.getPath() + "!"  + jar + "!" + name);
+    /**
+     * Build URL from given subjar and entry name.
+     * @param jar the name of the jar contained in the root jar
+     * @param name the entry name of the subjar
+     * @return a jarInJar URL
+     * @throws MalformedURLException if we're not able to build an URL
+     */
+    protected URL getURL(String jar, String name) throws MalformedURLException {
+        URL url =  new URL(BootstrapURLStreamHandlerFactory.JAR_IN_JAR_PROTOCOL.concat(":/").concat(rootURL.getPath()).concat("!").concat(jar).concat("!").concat(name));
         return url;
     }
 

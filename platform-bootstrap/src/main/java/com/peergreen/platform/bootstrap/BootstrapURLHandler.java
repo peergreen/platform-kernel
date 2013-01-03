@@ -20,11 +20,33 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 
+/**
+ * Defines an URL handler for handling "jarinjar:" protocol
+ * @author Florent Benoit
+ */
 public class BootstrapURLHandler extends URLStreamHandler {
 
+    /**
+     * Repository of URLs.
+     */
+    private final EntriesRepository entriesRepository;
+
+    /**
+     * Constructor with predefined repository.
+     * @param entriesRepository the repository
+     */
+    public BootstrapURLHandler(EntriesRepository entriesRepository) {
+        this.entriesRepository = entriesRepository;
+    }
+
+    /**
+     * We build a connection to the specified jarinjar URL.
+     * @param url the URL to connect to
+     * @return the jarinjar URL connection.
+     */
     @Override
     protected URLConnection openConnection(URL url) throws IOException {
-        return new JarInJarURLConnection(url);
+        return new JarInJarURLConnection(url, entriesRepository);
     }
 
 }
