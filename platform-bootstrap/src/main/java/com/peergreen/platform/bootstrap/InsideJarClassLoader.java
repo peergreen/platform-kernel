@@ -49,7 +49,6 @@ public class InsideJarClassLoader extends SecureClassLoader {
         super(parent);
         this.entriesRepository = entriesRepository;
         this.accessControlContext = AccessController.getContext();
-
     }
 
 

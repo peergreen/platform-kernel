@@ -34,11 +34,6 @@ public class JarInJarURLConnection extends URLConnection {
     private InputStream inputStream;
 
     /**
-     * Length of the content specified by this URL.
-     */
-    private final long length = -1;
-
-    /**
      * Repository of URLs.
      */
     private final EntriesRepository entriesRepository;
@@ -88,6 +83,6 @@ public class JarInJarURLConnection extends URLConnection {
      */
     @Override
     public long getContentLengthLong() {
-        return length;
+        return entriesRepository.getByteEntry(url).getBytes().length;
     }
 }

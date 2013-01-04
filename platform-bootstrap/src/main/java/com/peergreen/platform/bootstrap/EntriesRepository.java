@@ -112,6 +112,18 @@ public class EntriesRepository {
 
                         // get Entry Name
                         String subName = subZipEntry.getName();
+
+                        // .class already exists ?
+                        String className = null;
+                        if (subName.endsWith(".class")) {
+                            className = subName.substring(0, subName.length() - 6).replace("/", ".");
+                            if (byteEntries.containsKey(className)) {
+                                subZipEntry = zipInputStream.getNextEntry();
+                                continue;
+                            }
+                        }
+
+
                         URL url = getURL(entry.getName(), subName);
 
                         List<URL> currentList = urlEntries.get(subName);
@@ -142,7 +154,6 @@ public class EntriesRepository {
 
                             // add class with the name of the class
                             if (subName.endsWith(".class")) {
-                                String className = subName.substring(0, subName.length() - 6).replace("/", ".");
                                 byteEntries.put(className, byteEntry);
                             } else if (!subName.endsWith("/")){
                                 // Add only content, not the directories
@@ -153,15 +164,11 @@ public class EntriesRepository {
 
                     }
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-
-
+                    throw new BootstrapException("Unable to scan the jar '" + entry.getName() + "'", e);
                 }
             }
-        } catch (IOException | URISyntaxException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
+        } catch (IOException | URISyntaxException e) {
+            throw new BootstrapException("Unable to scan the jar '" + rootURL + "'", e);
         }
     }
 
