@@ -17,6 +17,7 @@ package com.peergreen.platform.bootstrap;
 
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Enumeration;
 
 import org.testng.Assert;
@@ -53,17 +54,17 @@ public class TestEntriesRepository {
         URL firstA = repository.getURL("a.txt");
         ByteEntry byteEntryA = repository.getByteEntry(firstA);
         Assert.assertNotNull(byteEntryA);
-        Assert.assertEquals(byteEntryA.getBytes(), "FirstA\n".getBytes());
+        Assert.assertEquals(byteEntryA.getBytes(), "FirstA\n".getBytes(Charset.defaultCharset()));
 
         URL firstB = repository.getURL("b.txt");
         ByteEntry byteEntryB = repository.getByteEntry(firstB);
         Assert.assertNotNull(byteEntryB);
-        Assert.assertEquals(byteEntryB.getBytes(), "FirstB\n".getBytes());
+        Assert.assertEquals(byteEntryB.getBytes(), "FirstB\n".getBytes(Charset.defaultCharset()));
 
         URL firstC = repository.getURL("sub/entry/c.txt");
         ByteEntry byteEntryC = repository.getByteEntry(firstC);
         Assert.assertNotNull(byteEntryC);
-        Assert.assertEquals(byteEntryC.getBytes(), "FirstC\n".getBytes());
+        Assert.assertEquals(byteEntryC.getBytes(), "FirstC\n".getBytes(Charset.defaultCharset()));
 
 
         // Now check for entries in b.jar too
@@ -74,7 +75,7 @@ public class TestEntriesRepository {
         Assert.assertTrue(urlaA.getPath().contains("a.jar"));
         ByteEntry byteEntryUrlaA = repository.getByteEntry(urlaA);
         Assert.assertNotNull(byteEntryUrlaA);
-        Assert.assertEquals(byteEntryUrlaA.getBytes(), "FirstA\n".getBytes());
+        Assert.assertEquals(byteEntryUrlaA.getBytes(), "FirstA\n".getBytes(Charset.defaultCharset()));
 
 
         //
@@ -83,7 +84,7 @@ public class TestEntriesRepository {
         Assert.assertTrue(urlaB.getPath().contains("b.jar"));
         ByteEntry byteEntryUrlaB = repository.getByteEntry(urlaB);
         Assert.assertNotNull(byteEntryUrlaB);
-        Assert.assertEquals(byteEntryUrlaB.getBytes(), "SecondA\n".getBytes());
+        Assert.assertEquals(byteEntryUrlaB.getBytes(), "SecondA\n".getBytes(Charset.defaultCharset()));
 
 
     }

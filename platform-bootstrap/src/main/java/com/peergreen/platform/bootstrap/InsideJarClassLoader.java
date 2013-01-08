@@ -63,7 +63,7 @@ public class InsideJarClassLoader extends SecureClassLoader {
                     new PrivilegedExceptionAction<Class<?>>() {
                         @Override
                         public Class<?> run() throws ClassNotFoundException {
-                            ByteEntry byteEntry = entriesRepository.getByteEntry(name);
+                            ByteEntry byteEntry = getRepository().getByteEntry(name);
                             if (byteEntry == null) {
                                 throw new ClassNotFoundException("Unable to find class '" +  name + "'.");
                             }
@@ -72,7 +72,7 @@ public class InsideJarClassLoader extends SecureClassLoader {
                             Class<?> clazz = defineClass(name, byteEntry.getBytes(), 0, byteEntry.getBytes().length, byteEntry.getCodesource());
 
                             // Remove associated bytecode no longer needed
-                            entriesRepository.removeClassEntry(name);
+                            getRepository().removeClassEntry(name);
 
                             // return the class.
                             return clazz;
@@ -101,6 +101,11 @@ public class InsideJarClassLoader extends SecureClassLoader {
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
         return entriesRepository.getURLs(name);
+    }
+
+
+    protected EntriesRepository getRepository() {
+        return entriesRepository;
     }
 
 }

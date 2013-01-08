@@ -18,6 +18,9 @@ package com.peergreen.platform.bootstrap;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 
 /**
  * Bootstrap class used to load delegating class.
@@ -106,13 +109,21 @@ public class Bootstrap {
      * @return a classloader that can access classes located in jars inside jar.
      * @throws BootstrapException if classloader cannot be built
      */
-    protected ClassLoader getClassLoader(EntriesRepository entriesRepository) throws BootstrapException {
+    protected ClassLoader getClassLoader(final EntriesRepository entriesRepository) throws BootstrapException {
 
         // Create the classloader using current context classloader as our parent
-        ClassLoader insideJarClassLoader = new InsideJarClassLoader(Thread.currentThread().getContextClassLoader(), entriesRepository);
+        try {
+            return AccessController.doPrivileged(
+                    new PrivilegedExceptionAction<ClassLoader>() {
+                        @Override
+                        public ClassLoader run() throws ClassNotFoundException {
+                            return new InsideJarClassLoader(Thread.currentThread().getContextClassLoader(), entriesRepository);
+                        }
+                    });
+        } catch (PrivilegedActionException e) {
+           throw new BootstrapException("Unable to get the classloader", e);
+        }
 
-        // return classloader
-        return insideJarClassLoader;
     }
 
 

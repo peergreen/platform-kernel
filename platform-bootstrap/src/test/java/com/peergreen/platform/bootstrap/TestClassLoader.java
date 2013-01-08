@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
 import java.util.Enumeration;
 
 import org.testng.Assert;
@@ -76,7 +77,7 @@ public class TestClassLoader {
         URL firstA = insideJarClassLoader.getResource("a.txt");
         Assert.assertNotNull(firstA);
         Assert.assertEquals(firstA.getProtocol(), "jarinjar");
-        Assert.assertEquals(getBytes(firstA), "FirstA\n".getBytes());
+        Assert.assertEquals(getBytes(firstA), "FirstA\n".getBytes(Charset.defaultCharset()));
 
         // Check content length
         URLConnection connection = firstA.openConnection();
@@ -90,13 +91,13 @@ public class TestClassLoader {
 
         Assert.assertNotNull(cAjar);
         Assert.assertTrue(cAjar.getPath().contains("a.jar"));
-        Assert.assertEquals(getBytes(cAjar), "FirstC\n".getBytes());
+        Assert.assertEquals(getBytes(cAjar), "FirstC\n".getBytes(Charset.defaultCharset()));
 
         URL cBjar = aList.nextElement();
         Assert.assertFalse(aList.hasMoreElements());
         Assert.assertNotNull(cBjar);
         Assert.assertTrue(cBjar.getPath().contains("b.jar"));
-        Assert.assertEquals(getBytes(cBjar), "SecondC\n".getBytes());
+        Assert.assertEquals(getBytes(cBjar), "SecondC\n".getBytes(Charset.defaultCharset()));
 
 
     }

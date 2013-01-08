@@ -41,7 +41,7 @@ public class ByteEntry {
      */
     public ByteEntry(CodeSource codeSource, byte[] bytes) {
         this.codesource = codeSource;
-        this.bytes = bytes;
+        this.bytes = bytes.clone();
     }
 
     /**
@@ -55,7 +55,7 @@ public class ByteEntry {
      * @return the bytecode of the class to define
      */
     public byte[] getBytes() {
-        return bytes;
+        return bytes.clone();
     }
 
 }
