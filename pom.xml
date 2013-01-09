@@ -14,7 +14,6 @@
     <module>platform-apis</module>
     <module>platform-launcher</module>
     <module>platform-bootstrap</module>
-    <module>platform-services</module>
   </modules>
     
 </project>
