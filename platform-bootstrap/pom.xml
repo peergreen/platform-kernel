@@ -91,7 +91,7 @@
                 <artifactItem>
                   <groupId>org.apache.felix</groupId>
                   <artifactId>org.apache.felix.ipojo</artifactId>
-                  <version>1.8.4</version>
+                  <version>1.8.6</version>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.apache.felix</groupId>
@@ -99,14 +99,14 @@
                   <version>1.6.0</version>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.ow2.bundles</groupId>
-                  <artifactId>ow2-util-log</artifactId>
-                  <version>1.0.34</version>
+                  <groupId>org.ow2.util.i18n</groupId>
+                  <artifactId>i18n</artifactId>
+                  <version>2.0.0</version>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.ow2.bundles</groupId>
-                  <artifactId>ow2-util-i18n</artifactId>
-                  <version>1.0.34</version>
+                  <groupId>org.ow2.util.log</groupId>
+                  <artifactId>log-bridge-jul</artifactId>
+                  <version>2.0.0</version>
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.apache.felix</groupId>
@@ -148,18 +148,18 @@
                   <artifactId>org.apache.felix.gogo.runtime</artifactId>
                   <version>0.10.0</version>
                 </artifactItem>
-                <!-- 
-                <artifactItem>
-                  <groupId>org.apache.felix</groupId>
-                  <artifactId>org.apache.felix.gogo.shell</artifactId>
-                  <version>0.10.0</version>
-                </artifactItem>
-                 -->
                 <artifactItem>
                   <groupId>org.apache.felix</groupId>
                   <artifactId>org.apache.felix.gogo.command</artifactId>
                   <version>0.10.0</version>
                 </artifactItem>
+                
+                <artifactItem>
+                  <groupId>org.ops4j.pax.url</groupId>
+                  <artifactId>pax-url-mvn</artifactId>
+                  <version>1.2.8</version>
+                </artifactItem>
+                
               </artifactItems>
               <outputDirectory>${project.build.directory}/classes/bundles</outputDirectory>
               <overWriteReleases>false</overWriteReleases>
