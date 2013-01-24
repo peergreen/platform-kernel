@@ -29,18 +29,13 @@ class FactoryFinder {
         }
 
         for (URL resource : urls) {
-            BufferedReader br = new BufferedReader(new InputStreamReader(resource.openStream()));
-            try {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.openStream()))) {
                 for (String s = br.readLine(); s != null; s = br.readLine()) {
                     s = s.trim();
                     // Try to load first non-empty, non-commented line.
                     if ((s.length() > 0) && (s.charAt(0) != '#')) {
                         return Class.forName(s).asSubclass(FrameworkFactory.class).newInstance();
                     }
-                }
-            } finally {
-                if (br != null) {
-                    br.close();
                 }
             }
 
