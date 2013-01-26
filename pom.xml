@@ -19,6 +19,7 @@
     <module>platform-apis</module>
     <module>platform-launcher</module>
     <module>platform-bootstrap</module>
+    <module>platform-maven-plugin</module>
   </modules>
     
 </project>
