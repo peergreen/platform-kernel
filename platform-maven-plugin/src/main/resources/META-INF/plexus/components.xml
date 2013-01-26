@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component-set>
+  <components>
+    <component>
+      <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
+      <role-hint>platform</role-hint>
+      <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
+      <configuration>
+        <lifecycles>
+          <lifecycle>
+            <id>default</id>
+            <phases>
+              <process-resources>org.apache.maven.plugins:maven-resources-plugin:resources</process-resources>
+              <package>com.peergreen.prototype.platform:platform-maven-plugin:build</package>
+              <install>org.apache.maven.plugins:maven-install-plugin:install</install>
+              <deploy>org.apache.maven.plugins:maven-deploy-plugin:deploy</deploy>
+            </phases>
+          </lifecycle>
+        </lifecycles>
+      </configuration>
+    </component>
+  </components>
+</component-set>
+

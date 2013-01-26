@@ -1,7 +1,5 @@
 package com.peergreen.platform.launcher.shell;
 
-import org.osgi.framework.ServiceReference;
-
 import com.peergreen.platform.info.JavaInfo;
 import com.peergreen.platform.info.PlatformInfo;
 
@@ -28,19 +26,18 @@ public class Infos {
     }
 
     public void platform() {
-        
-        System.out.printf("Platform Information (%s)\n", platformInfo.getId());
-        System.out.printf("* Started %tc\n", platformInfo.getStartDate());
-        System.out.printf("* Boot time %s\n", printDuration((double) platformInfo.getStartupTime()));
-        System.out.printf("* Uptime %s\n", printDuration((double) platformInfo.getUptime()));
+        System.out.printf("Platform Information (%s)%n", platformInfo.getId());
+        System.out.printf("* Started %tc%n", platformInfo.getStartDate());
+        System.out.printf("* Boot time %s%n", printDuration((double) platformInfo.getStartupTime()));
+        System.out.printf("* Uptime %s%n", printDuration((double) platformInfo.getUptime()));
 
     }
 
     public void runtime() {
         JavaInfo info = platformInfo.getJavaInfo();
-        System.out.printf("Java %s\n", info.getSpecificationVersion().getText());
-        System.out.printf("* Executable path: %s\n", info.getExecutable());
-        System.out.printf("* Implementation version: %s\n", info.getImplementationVersion().getText());
+        System.out.printf("Java %s%n", info.getSpecificationVersion().getText());
+        System.out.printf("* Executable path: %s%n", info.getExecutable());
+        System.out.printf("* Implementation version: %s%n", info.getImplementationVersion().getText());
     }
 
     /**
