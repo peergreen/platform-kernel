@@ -28,6 +28,8 @@ import java.security.PrivilegedExceptionAction;
  */
 public class Bootstrap {
 
+    private static final String NAMESPACE = "com.peergreen.platform.bootstrap:";
+
     /**
      * Keep arguments of the bootstrap in order to send them to the delegating class.
      */
@@ -62,6 +64,8 @@ public class Bootstrap {
         entriesRepository.scan();
         long tEnd = System.currentTimeMillis();
         System.out.println("Time to scan entries : " + (tEnd - t0) + " ms");
+        addBootstrapProperty("scan.begin", t0);
+        addBootstrapProperty("scan.end", tEnd);
 
         // Create classloader with embedded jars
         ClassLoader classLoader = getClassLoader(entriesRepository);
@@ -86,6 +90,7 @@ public class Bootstrap {
             throw new BootstrapException("The delegating class '" + classname + "' to launch has no main(String[] args) method available.", e);
         }
 
+        addBootstrapProperty("main.invoke", tEnd);
         // Call main
         try {
             mainMethod.invoke(null, (Object) args);
@@ -133,8 +138,24 @@ public class Bootstrap {
      * @param args the arguments of this bootstrap launcher
      */
     public static void main(String[] args) throws Exception {
+        addBootstrapProperty("begin", System.currentTimeMillis());
         Bootstrap bootstrap = new Bootstrap(args);
         bootstrap.start();
+        clearBootstrapProperties("begin", "scan.begin", "scan.end", "main.invoke");
+    }
+
+    private static void clearBootstrapProperties(String... keys) {
+        for (String key : keys) {
+            System.clearProperty(NAMESPACE + key);
+        }
+    }
+
+    private static void addBootstrapProperty(String key, long value) {
+        addBootstrapProperty(key, String.valueOf(value));
+    }
+
+    private static void addBootstrapProperty(String key, String value) {
+        System.setProperty(NAMESPACE + key, value);
     }
 
 }

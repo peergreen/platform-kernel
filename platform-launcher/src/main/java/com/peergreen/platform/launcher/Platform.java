@@ -12,13 +12,18 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.peergreen.platform.event.EventKeeper;
+import com.peergreen.platform.launcher.event.Constants;
+import com.peergreen.platform.launcher.event.DefaultEvent;
+import com.peergreen.platform.launcher.event.DefaultEventKeeper;
 import com.peergreen.platform.launcher.report.Message;
 import com.peergreen.platform.launcher.report.Reporter;
 import com.peergreen.platform.launcher.report.Severity;
+import com.peergreen.platform.launcher.shell.Events;
+import com.peergreen.platform.launcher.shell.Times;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
-import org.osgi.framework.Constants;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
 import org.osgi.framework.launch.Framework;
@@ -31,6 +36,12 @@ import com.peergreen.platform.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.platform.launcher.shell.Infos;
 import org.osgi.framework.startlevel.BundleStartLevel;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
+
+import static com.peergreen.platform.launcher.event.Constants.Properties.*;
+import static com.peergreen.platform.launcher.event.Constants.Java.*;
+import static com.peergreen.platform.launcher.event.Constants.Platform.*;
+import static com.peergreen.platform.launcher.event.Constants.Bootstrap.*;
+import static com.peergreen.platform.launcher.event.Constants.OSGi.*;
 
 /**
  * Created by IntelliJ IDEA.
@@ -47,6 +58,7 @@ public class Platform {
     private final DefaultPlatformInfo info = new DefaultPlatformInfo();
     private BundleContext platformContext;
     private Reporter reporter = new Reporter();
+    private EventKeeper eventKeeper = new DefaultEventKeeper();
 
     /**
      * Framework StartLevel value provided by the user;
@@ -57,6 +69,10 @@ public class Platform {
         Platform platform = new Platform();
         platform.prepare();
         platform.start();
+    }
+
+    public Platform() {
+        initEventKeeper();
     }
 
     public void setUserFrameworkStartLevel(int userFrameworkStartLevel) {
@@ -73,11 +89,35 @@ public class Platform {
         // Create the framework instance
         FrameworkFactory factory = findFrameworkFactory();
         Map<String, String> configuration = new HashMap<String, String>();
-        configuration.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, "org.w3c.dom.traversal,javax.transaction;version=1.1.0,javax.transaction.xa;version=1.1.0");
+        configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, "org.w3c.dom.traversal,javax.transaction;version=1.1.0,javax.transaction.xa;version=1.1.0");
         // I need to force the Framework StartLevel here, we will move up the FSL after initialisation
-        configuration.put(Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
+        configuration.put(org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
 
         framework = factory.newFramework(configuration);
+
+        fireEvent(PLATFORM_PREPARE, "Platform is prepared");
+    }
+
+    private void initEventKeeper() {
+        String jvmBegin = System.getProperty(PROPERTY_BOOTSTRAP_BEGIN);
+        if (jvmBegin != null) {
+            fireEvent(BEGIN, Long.valueOf(jvmBegin), "Java starts executing the application");
+        }
+
+        String scanBegin = System.getProperty(Constants.Properties.PROPERTY_BOOTSTRAP_SCAN_BEGIN);
+        if (scanBegin != null) {
+            fireEvent(SCAN_BEGIN, Long.valueOf(scanBegin), "Bootstrap begins scan of resources");
+        }
+
+        String scanEnd = System.getProperty(Constants.Properties.PROPERTY_BOOTSTRAP_SCAN_END);
+        if (scanEnd != null) {
+            fireEvent(SCAN_END, Long.valueOf(scanEnd), "Bootstrap ends scan of resources");
+        }
+
+        String mainInvoke = System.getProperty(Constants.Properties.PROPERTY_BOOTSTRAP_MAIN_INVOKE);
+        if (mainInvoke != null) {
+            fireEvent(MAIN_INVOKE, Long.valueOf(mainInvoke), "Bootstrap starts Peergreen Platform");
+        }
     }
 
     private boolean isFirstBoot() {
@@ -97,10 +137,13 @@ public class Platform {
         framework.init();
         platformContext = framework.getBundleContext();
 
+        fireEvent(OSGI_INIT, "OSGi Framework initialized");
+
         // Start the framework (going into ACTIVE state)
         // Framework will move its StartLevel value up to 1
         // Persisted bundles may be started depending of their own persisted start level
         framework.start();
+        fireEvent(OSGI_START, "OSGi Framework started");
 
         // Avoid scanning for bundles for subsequent boots
         // They are already there because of the OSGi persistence
@@ -118,8 +161,12 @@ public class Platform {
             // Install any discovered bundles
             Collection<Bundle> bundles = installBundles(resources);
 
+            fireEvent(BUNDLES_INSTALL, "Bundles installed");
+
             // Start the installed bundles
             startBundles(bundles);
+
+            fireEvent(BUNDLES_START, "Bundles started");
 
         }
 
@@ -220,7 +267,7 @@ public class Platform {
     }
 
     private static boolean isFragment(Bundle bundle) {
-        return bundle.getHeaders().get(Constants.FRAGMENT_HOST) != null;
+        return bundle.getHeaders().get(org.osgi.framework.Constants.FRAGMENT_HOST) != null;
     }
 
     private static FrameworkFactory findFrameworkFactory() throws Exception {
@@ -236,12 +283,16 @@ public class Platform {
                 info,
                 null);
 
+        platformContext.registerService(EventKeeper.class, eventKeeper, null);
+
         // Register platform related commands
         Dictionary<String, Object> dict = new Hashtable<String, Object>();
         dict.put("osgi.command.scope", "info");
         dict.put("osgi.command.function", Infos.FUNCTIONS);
-
         platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
+
+        dict.put("osgi.command.function", Events.FUNCTIONS);
+        platformContext.registerService(Events.class.getName(), new Events(eventKeeper), dict);
 
         printSuccessfulStartup();
     }
@@ -249,7 +300,7 @@ public class Platform {
     private void printSuccessfulStartup() {
         FrameworkStartLevel fsl = framework.adapt(FrameworkStartLevel.class);
         System.out.printf("Peergreen Kernel started in %s (Bundles:%d, StartLevel:%d).%n",
-                Infos.printDuration(info.getStartupTime()),
+                Times.printDuration(info.getStartupTime()),
                 platformContext.getBundles().length,
                 fsl.getStartLevel());
         List<Message> warnings = reporter.getWarnings();
@@ -279,6 +330,7 @@ public class Platform {
     private class StartupFrameworkListener implements FrameworkListener {
         @Override
         public void frameworkEvent(FrameworkEvent event) {
+            fireEvent(PLATFORM_READY, "Platform is ready (all bundles have been started)");
             switch (event.getType()) {
                 case FrameworkEvent.ERROR:
                     // Could not reach the expected start level because of some error
@@ -292,5 +344,17 @@ public class Platform {
                     }
             }
         }
+    }
+
+    private void fireEvent(String id, long timestamp, String message) {
+        eventKeeper.logEvent(
+                new DefaultEvent(id,
+                                 (timestamp == 0) ? System.currentTimeMillis() : timestamp,
+                                 message)
+        );
+    }
+
+    private void fireEvent(String id, String message) {
+        fireEvent(id, 0, message);
     }
 }
