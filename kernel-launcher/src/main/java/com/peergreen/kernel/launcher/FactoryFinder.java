@@ -37,7 +37,6 @@ class FactoryFinder {
     private final static String RESOURCE = "META-INF/services/" + FrameworkFactory.class.getName();
 
     public FrameworkFactory find() throws Exception {
-        System.out.println("classloader = " + FactoryFinder.class.getClassLoader());
         Enumeration<URL> resources = FactoryFinder.class.getClassLoader().getResources(RESOURCE);
         List<URL> urls = Collections.list(resources);
         if (urls.isEmpty()) {

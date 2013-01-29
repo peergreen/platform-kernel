@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -42,8 +41,6 @@ public class BootstrapJarScanner implements BundleScanner {
         String classpath = System.getProperty("java.class.path");
         String[] paths = classpath.split(File.pathSeparator);
         Collection<URL> bundles = new ArrayList<URL>();
-
-        System.out.println("path = " + Arrays.asList(paths));
 
         for (String path : paths) {
             if (path.endsWith(".jar")) {
