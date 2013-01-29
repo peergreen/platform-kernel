@@ -1,5 +1,13 @@
 package com.peergreen.kernel.maven;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.DefaultRepositoryRequest;
 import org.apache.maven.artifact.repository.RepositoryRequest;
@@ -23,14 +31,6 @@ import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.jar.Manifest;
 import org.codehaus.plexus.archiver.jar.ManifestException;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Created with IntelliJ IDEA.
@@ -57,19 +57,19 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Component
     private MavenProject project;
 
-    @Parameter(defaultValue = "org.apache.felix/org.apache.felix.framework/4.0.2")
+    @Parameter(defaultValue = "org.apache.felix/org.apache.felix.framework/4.0.3")
     private String framework;
 
     @Parameter(defaultValue = "org.osgi/org.osgi.core/4.3.1")
     private String specification;
 
-    @Parameter(defaultValue = "com.peergreen.prototype.platform/platform-launcher/1.0-SNAPSHOT")
+    @Parameter(defaultValue = "com.peergreen.kernel/kernel-launcher/1.0.0-SNAPSHOT")
     private String launcher;
 
-    @Parameter(defaultValue = "com.peergreen.prototype.platform/platform-bootstrap/1.0-SNAPSHOT")
+    @Parameter(defaultValue = "com.peergreen.bootstrap/peergreen-bootstrap/1.0.0-SNAPSHOT")
     private String bootstrap;
 
-    @Parameter(defaultValue = "com.peergreen.platform.bootstrap.Bootstrap")
+    @Parameter(defaultValue = "com.peergreen.bootstrap.Bootstrap")
     private String mainClass;
 
     @Parameter(defaultValue = "${project.build.directory}/${project.artifactId}-${project.version}.jar")
@@ -79,7 +79,7 @@ public class BuildPlatformMojo extends AbstractMojo {
     private File classes;
 
     @Parameter
-    private List<StartLevel> levels = new ArrayList<>();
+    private final List<StartLevel> levels = new ArrayList<>();
 
     @Component
     private RepositorySystem repositorySystem;
@@ -88,7 +88,7 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Component
     private ResolutionErrorHandler errorHandler;
 
-    private Map<String, Integer> bundleToLevel = new HashMap<>();
+    private final Map<String, Integer> bundleToLevel = new HashMap<>();
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
