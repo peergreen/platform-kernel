@@ -36,34 +36,6 @@
     <url>https://forge.peergreen.com/git/summary/?r=platform/kernel.git</url>
   </scm>
 
-  <properties>
-    <ipojo.version>1.8.4</ipojo.version>
-    <maven-ipojo-bnd-plugin.version>1.8.6</maven-ipojo-bnd-plugin.version>
-    <osgi.version>5.0.0</osgi.version>
-  </properties>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>org.apache.felix.ipojo</artifactId>
-        <version>${ipojo.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.felix</groupId>
-        <artifactId>org.apache.felix.ipojo.annotations</artifactId>
-        <version>${ipojo.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.osgi</groupId>
-        <artifactId>org.osgi.core</artifactId>
-        <version>${osgi.version}</version>
-      </dependency>
-
-    </dependencies>
-  </dependencyManagement>
-
-
   <build>
 
     <plugins>
@@ -84,18 +56,9 @@
         <configuration>
           <instructions>
             <_include>-target/classes/META-INF/${project.artifactId}.bnd</_include>
-            <_plugin>org.apache.felix.ipojo.bnd.PojoizationPlugin;metadata=${basedir}/src/main/resources/metadata.xml;use-local-schemas=true</_plugin>
           </instructions>
         </configuration>
-        <dependencies>
-          <dependency>
-            <groupId>org.apache.felix</groupId>
-            <artifactId>bnd-ipojo-plugin</artifactId>
-            <version>${maven-ipojo-bnd-plugin.version}</version>
-          </dependency>
-        </dependencies>
       </plugin>
-
     </plugins>
   </build>
 
