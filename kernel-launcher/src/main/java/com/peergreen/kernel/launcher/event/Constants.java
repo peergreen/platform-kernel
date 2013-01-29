@@ -48,7 +48,7 @@ public interface Constants {
     }
 
     public static interface Properties {
-        String NAMESPACE = "com.peergreen.platform.bootstrap:";
+        String NAMESPACE = "com.peergreen.bootstrap:";
         String PROPERTY_BOOTSTRAP_BEGIN = NAMESPACE + "begin";
         String PROPERTY_BOOTSTRAP_SCAN_BEGIN = NAMESPACE + "scan.begin";
         String PROPERTY_BOOTSTRAP_SCAN_END = NAMESPACE + "scan.end";
