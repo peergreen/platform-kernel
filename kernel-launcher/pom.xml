@@ -25,6 +25,8 @@
   <artifactId>kernel-launcher</artifactId>
   <packaging>bundle</packaging>
 
+  <name>Peergreen Kernel Launcher</name>
+
   <dependencies>
     <dependency>
       <groupId>org.osgi</groupId>

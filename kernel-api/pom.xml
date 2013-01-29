@@ -27,4 +27,6 @@
   <artifactId>kernel-api</artifactId>
   <packaging>bundle</packaging>
 
+  <name>Peergreen Kernel Api</name>
+
 </project>
