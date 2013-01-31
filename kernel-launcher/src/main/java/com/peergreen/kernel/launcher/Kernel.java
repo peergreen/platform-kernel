@@ -166,12 +166,8 @@ public class Kernel {
         try {
             framework.init();
         } finally {
+            //TODO: Print trace to a logger
             System.setErr(previousErrorStream);
-            // Check expect message ?
-            String errorMessage = baos.toString();
-            if (errorMessage != null && !errorMessage.contains("Getting system bundle manifest")) {
-                System.err.println("Error : " + errorMessage);
-            }
         }
         platformContext = framework.getBundleContext();
 
