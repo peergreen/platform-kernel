@@ -28,7 +28,9 @@ import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_PR
 import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_READY;
 import static com.peergreen.kernel.launcher.event.Constants.Properties.PROPERTY_BOOTSTRAP_BEGIN;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -155,7 +157,22 @@ public class Kernel {
 
         // Init the framework
         // After this point, persisted bundles are re-installed (but not started)
-        framework.init();
+
+        // Avoid to get framework System.out/System.err traces
+        PrintStream previousErrorStream = System.err;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream tempStream = new PrintStream(baos);
+        System.setErr(tempStream);
+        try {
+            framework.init();
+        } finally {
+            System.setErr(previousErrorStream);
+            // Check expect message ?
+            String errorMessage = baos.toString();
+            if (errorMessage != null && !errorMessage.contains("Getting system bundle manifest")) {
+                System.err.println("Error : " + errorMessage);
+            }
+        }
         platformContext = framework.getBundleContext();
 
         fireEvent(OSGI_INIT, "OSGi Framework initialized");
