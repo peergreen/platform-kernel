@@ -113,6 +113,9 @@ public class Kernel {
 
         framework = factory.newFramework(configuration);
 
+        // Change Thread name
+        Thread.currentThread().setName("Peergreen Kernel Main thread");
+
         fireEvent(PLATFORM_PREPARE, "Platform is prepared");
     }
 
