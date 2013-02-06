@@ -129,7 +129,7 @@ public class BuildPlatformMojo extends AbstractMojo {
         if (specFile != null) {
             archiver.addFile(specFile, LIB + specFile.getName());
         }
-        if (specFile != null) {
+        if (launcherFile != null) {
             archiver.addFile(launcherFile, LIB + launcherFile.getName());
         }
 
