@@ -51,7 +51,7 @@ public class BootstrapJarScanner implements BundleScanner {
                     jarFile = new JarFile(file);
                     List<JarEntry> entries = Collections.list(jarFile.entries());
                     for (JarEntry entry : entries) {
-                        if (entry.getName().startsWith("bundles/") && entry.getName().endsWith(".jar")) {
+                        if (entry.getName().startsWith("bundles/") && (entry.getName().endsWith(".jar") || entry.getName().endsWith(".pack.gz"))) {
                             URL fileUrl = file.toURI().toURL();
                             URL resource = new URL("jar:" + fileUrl.toString() + "!/" + entry.getName());
                             bundles.add(resource);

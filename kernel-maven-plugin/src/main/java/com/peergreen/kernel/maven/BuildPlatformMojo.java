@@ -1,12 +1,17 @@
 package com.peergreen.kernel.maven;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarFile;
+import java.util.jar.Pack200;
+import java.util.jar.Pack200.Packer;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.DefaultRepositoryRequest;
@@ -75,6 +80,13 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/${project.artifactId}-${project.version}.jar")
     private File destFile;
 
+    @Parameter(defaultValue = "true")
+    private boolean usePack200;
+
+    @Parameter(defaultValue = "${project.build.directory}/pack200")
+    private File pack200Dir;
+
+
     @Parameter(defaultValue = "${project.build.outputDirectory}")
     private File classes;
 
@@ -108,14 +120,43 @@ public class BuildPlatformMojo extends AbstractMojo {
         // 2. Bundles
         // -------------------------------------
         Set<Artifact> artifacts = project.getDependencyArtifacts();
+
+        // Not thread safe but only one thread...
+        Packer packer = Pack200.newPacker();
+
         for (Artifact artifact : artifacts) {
             int level = findLevel(artifact);
-            String path = artifact.getFile().getName();
+
+            File artifactFile = null;
+            if (usePack200) {
+
+                // Get local file
+                File localFile = artifact.getFile();
+
+                // Create the directory for storing pack200 jars.
+                pack200Dir.mkdirs();
+
+                // Create path for the pack200 jar
+                File packedFile = new File(pack200Dir, localFile.getName().concat(".pack.gz"));
+
+                // compress localFile with pack200
+                try (JarFile jar = new JarFile(localFile);  GZIPOutputStream output = new GZIPOutputStream(new FileOutputStream(packedFile))) {
+                    packer.pack(jar, output);
+                } catch (IOException e) {
+                    throw new MojoExecutionException("Unable to pack the file '" + localFile + "' to pack200 format");
+                }
+                artifactFile = packedFile;
+            } else {
+                // Use the artifact file
+                artifactFile = artifact.getFile();
+            }
+
+            String path = artifactFile.getName();
             String prefix = BUNDLES;
             if (level > 1) {
                 prefix += String.valueOf(level);
             }
-            archiver.addFile(artifact.getFile(), prefix + "/" + path);
+            archiver.addFile(artifactFile, prefix + "/" + path);
         }
 
         // 3. Lib

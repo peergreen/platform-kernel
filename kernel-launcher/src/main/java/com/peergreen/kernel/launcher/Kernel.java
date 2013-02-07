@@ -30,8 +30,14 @@ import static com.peergreen.kernel.launcher.event.Constants.Properties.PROPERTY_
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Dictionary;
@@ -39,8 +45,12 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Pack200;
+import java.util.jar.Pack200.Unpacker;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -80,6 +90,10 @@ public class Kernel {
     private final Reporter reporter = new Reporter();
     private final EventKeeper eventKeeper = new DefaultEventKeeper();
 
+
+    private final File storage;
+    private final File unpackBundleDir;
+
     /**
      * Framework StartLevel value provided by the user;
      */
@@ -91,7 +105,18 @@ public class Kernel {
         kernel.start();
     }
 
-    public Kernel() {
+    public Kernel() throws MalformedURLException, URISyntaxException {
+        // Where is the current jar ?
+        URL location = Kernel.class.getProtectionDomain().getCodeSource().getLocation();
+        URL path = new URL(location.getPath());
+        File locationFile = new File(path.toURI()).getParentFile().getParentFile().getParentFile();
+
+        File workDirectory = new File(locationFile, "peergreen");
+
+        unpackBundleDir = new File(workDirectory, "bundles");
+        storage = new File(workDirectory, "storage");
+
+
         initEventKeeper();
     }
 
@@ -110,6 +135,15 @@ public class Kernel {
         FrameworkFactory factory = findFrameworkFactory();
         Map<String, String> configuration = new HashMap<String, String>();
         configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, "org.w3c.dom.traversal,javax.transaction;version=1.1.0,javax.transaction.xa;version=1.1.0");
+
+
+
+        // Storage
+        configuration.put(org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
+        configuration.put("osgi.install.area", storage.getPath());
+
+
+
         // I need to force the Framework StartLevel here, we will move up the FSL after initialisation
         configuration.put(org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
 
@@ -221,12 +255,69 @@ public class Kernel {
         framework.waitForStop(0);
     }
 
+
+    protected String unpack200(URL location) {
+        Unpacker unpacker = Pack200.newUnpacker();
+
+        // Get a connection on the URL
+        URLConnection connection = null;
+        try {
+            connection = location.openConnection();
+        } catch (IOException e) {
+            reporter.addMessage(new Message(Severity.ERROR, e));
+            return null;
+        }
+        connection.setDefaultUseCaches(false);
+
+
+        try (InputStream is = connection.getInputStream(); GZIPInputStream gzipInputStream = new GZIPInputStream(is)) {
+
+            // get name
+            String loc = location.toString();
+            int index = loc.lastIndexOf("/");
+            String name = loc.substring(index + 1, loc.length() - ".pack.gz".length());
+
+            File output = new File(unpackBundleDir, name);
+
+            try (JarOutputStream jarOutputStream = new JarOutputStream(new FileOutputStream(output))) {
+                unpacker.unpack(gzipInputStream, jarOutputStream);
+            } catch (IOException e) {
+                reporter.addMessage(new Message(Severity.ERROR, e));
+                return null;
+            }
+
+            try {
+                return output.toURI().toURL().toString();
+            } catch (MalformedURLException e) {
+                reporter.addMessage(new Message(Severity.ERROR, e));
+                return null;
+            }
+        } catch (IOException e) {
+            reporter.addMessage(new Message(Severity.ERROR, e));
+            return null;
+        }
+    }
+
+
     private Collection<Bundle> installBundles(List<URL> resources) throws BundleException {
 
+        unpackBundleDir.mkdirs();
         Collection<Bundle> bundles = new ArrayList<Bundle>();
         for (URL resource : resources) {
 
             String location = resource.toString();
+
+            // pack200 ?
+            if (location.endsWith(".pack.gz")) {
+                // unpack
+                String newLocation = unpack200(resource);
+                if (newLocation == null) {
+                    continue;
+                }
+                // Add reference:
+                location = "reference:".concat(newLocation);
+            }
+
             Bundle bundle = null;
             try {
                 bundle = platformContext.installBundle(location);
