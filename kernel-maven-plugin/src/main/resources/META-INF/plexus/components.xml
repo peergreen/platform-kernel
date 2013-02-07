@@ -20,6 +20,20 @@
         </lifecycles>
       </configuration>
     </component>
+
+    <component>
+      <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
+      <role-hint>platform</role-hint>
+      <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
+      <configuration>
+        <type>platform</type>
+        <includesDependencies>false</includesDependencies>
+        <language>java</language>
+        <extension>jar</extension>
+        <addedToClasspath>false</addedToClasspath>
+        <packaging>platform</packaging>
+      </configuration>
+    </component>
   </components>
 </component-set>
 
