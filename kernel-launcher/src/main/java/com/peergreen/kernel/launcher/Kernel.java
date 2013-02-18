@@ -134,7 +134,14 @@ public class Kernel {
         // Create the framework instance
         FrameworkFactory factory = findFrameworkFactory();
         Map<String, String> configuration = new HashMap<String, String>();
-        configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, "org.w3c.dom.traversal,javax.transaction;version=1.1.0,javax.transaction.xa;version=1.1.0");
+
+        // Adapt system exported packages
+        List<String> packages = new ArrayList<>();
+        packages.add("org.w3c.dom.traversal,javax.transaction;version=1.1.0");
+        packages.add("javax.transaction.xa;version=1.1.0");
+        packages.add(EventKeeper.class.getPackage().getName());
+        packages.add(PlatformInfo.class.getPackage().getName());
+        configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
 
 
 
@@ -153,6 +160,17 @@ public class Kernel {
         Thread.currentThread().setName("Peergreen Kernel Main thread");
 
         fireEvent(PLATFORM_PREPARE, "Platform is prepared");
+    }
+
+    private static String join(List<String> values, String separator) {
+        StringBuilder sb = new StringBuilder();
+        for (String value : values) {
+            if (sb.length() != 0) {
+                sb.append(separator);
+            }
+            sb.append(value);
+        }
+        return sb.toString();
     }
 
     private void initEventKeeper() {
