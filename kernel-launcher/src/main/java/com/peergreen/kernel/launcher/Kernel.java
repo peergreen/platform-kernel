@@ -20,6 +20,7 @@ import static com.peergreen.kernel.launcher.event.Constants.Bootstrap.MAIN_INVOK
 import static com.peergreen.kernel.launcher.event.Constants.Bootstrap.SCAN_BEGIN;
 import static com.peergreen.kernel.launcher.event.Constants.Bootstrap.SCAN_END;
 import static com.peergreen.kernel.launcher.event.Constants.Java.BEGIN;
+import static com.peergreen.kernel.launcher.event.Constants.Java.BOOT;
 import static com.peergreen.kernel.launcher.event.Constants.OSGi.BUNDLES_INSTALL;
 import static com.peergreen.kernel.launcher.event.Constants.OSGi.BUNDLES_START;
 import static com.peergreen.kernel.launcher.event.Constants.OSGi.OSGI_INIT;
@@ -34,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -177,6 +179,10 @@ public class Kernel {
     }
 
     private void initEventKeeper() {
+
+        long bootTime = ManagementFactory.getRuntimeMXBean().getStartTime();
+        fireEvent(BOOT, bootTime, "Java Virtual Machine started");
+
         String jvmBegin = System.getProperty(PROPERTY_BOOTSTRAP_BEGIN);
         if (jvmBegin != null) {
             fireEvent(BEGIN, Long.valueOf(jvmBegin), "Java starts executing the application");

@@ -55,7 +55,7 @@ public class Events {
     }
 
     public void elapsed(String to) {
-        Event one = event(Constants.Java.BEGIN);
+        Event one = event(Constants.Java.BOOT);
         Event two = event(to);
         elapsed(one, two);
     }

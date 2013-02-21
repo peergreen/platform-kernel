@@ -26,6 +26,7 @@ package com.peergreen.kernel.launcher.event;
 public interface Constants {
 
     public static interface Java {
+        String BOOT = "java/boot";
         String BEGIN = "java/begin";
     }
 
