@@ -52,6 +52,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import com.peergreen.kernel.launcher.branding.PeergreenBrandingService;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -76,6 +77,7 @@ import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
 import com.peergreen.kernel.launcher.shell.Times;
+import org.ow2.shelbie.core.branding.BrandingService;
 
 /**
  * @author Guillaume Sauthier
@@ -141,6 +143,7 @@ public class Kernel {
         packages.add("javax.transaction.xa;version=1.1.0");
         packages.add(EventKeeper.class.getPackage().getName());
         packages.add(PlatformInfo.class.getPackage().getName());
+        packages.add(BrandingService.class.getPackage().getName() + ";version=2.0");
         configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
 
 
@@ -255,6 +258,8 @@ public class Kernel {
             fireEvent(BUNDLES_START, "Bundles started");
 
         }
+
+        platformContext.registerService(BrandingService.class.getName(), new PeergreenBrandingService(), null);
 
         // Register a FrameworkListener to be notified of Bundles
         // failures when we'll set the framework StartLevel

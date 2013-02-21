@@ -39,7 +39,30 @@
       <artifactId>kernel-api</artifactId>
       <version>${project.version}</version>
     </dependency>
-
+    <dependency>
+      <!-- TODO replace this with shelbie-api module when ready -->
+      <groupId>org.ow2.shelbie</groupId>
+      <artifactId>shelbie-core</artifactId>
+      <version>2.0.0-M3-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>org.apache.felix.ipojo.handler.whiteboard</artifactId>
+          <groupId>org.apache.felix</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>util-substitution</artifactId>
+          <groupId>org.ow2.util</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>shelbie-gogocommands</artifactId>
+          <groupId>org.ow2.shelbie</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jansi</artifactId>
+          <groupId>org.fusesource.jansi</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
 
