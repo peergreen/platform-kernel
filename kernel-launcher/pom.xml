@@ -35,6 +35,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.compendium</artifactId>
+      <version>4.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>com.peergreen.kernel</groupId>
       <artifactId>kernel-api</artifactId>
       <version>${project.version}</version>

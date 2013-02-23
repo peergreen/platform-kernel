@@ -54,7 +54,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
-import com.peergreen.kernel.launcher.branding.PeergreenBrandingService;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -64,13 +63,18 @@ import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.osgi.framework.startlevel.BundleStartLevel;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
+import org.ow2.shelbie.core.branding.BrandingService;
+import org.ow2.shelbie.core.identity.IdentityProvider;
+import org.ow2.shelbie.core.prompt.PromptService;
 
 import com.peergreen.kernel.event.EventKeeper;
 import com.peergreen.kernel.info.PlatformInfo;
+import com.peergreen.kernel.launcher.branding.PeergreenBrandingService;
 import com.peergreen.kernel.launcher.event.Constants;
 import com.peergreen.kernel.launcher.event.DefaultEvent;
 import com.peergreen.kernel.launcher.event.DefaultEventKeeper;
 import com.peergreen.kernel.launcher.info.DefaultPlatformInfo;
+import com.peergreen.kernel.launcher.prompt.PeergreenPromptService;
 import com.peergreen.kernel.launcher.report.Message;
 import com.peergreen.kernel.launcher.report.Reporter;
 import com.peergreen.kernel.launcher.report.Severity;
@@ -79,7 +83,6 @@ import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
 import com.peergreen.kernel.launcher.shell.Times;
-import org.ow2.shelbie.core.branding.BrandingService;
 
 /**
  * @author Guillaume Sauthier
@@ -145,10 +148,13 @@ public class Kernel {
         packages.add("javax.transaction.xa;version=1.1.0");
         packages.add(EventKeeper.class.getPackage().getName());
         packages.add(PlatformInfo.class.getPackage().getName());
+
+        // Shelbie packages as we provide our own implementation of these services
+        // And that these services should be used instead of default one
         packages.add(BrandingService.class.getPackage().getName() + ";version=2.0");
+        packages.add(PromptService.class.getPackage().getName() + ";version=2.0");
+        packages.add(IdentityProvider.class.getPackage().getName() + ";version=2.0");
         configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
-
-
 
         // Storage
         configuration.put(org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
@@ -231,6 +237,9 @@ public class Kernel {
             System.setErr(previousErrorStream);
         }
         platformContext = framework.getBundleContext();
+
+        // register prompt service
+        platformContext.registerService(PromptService.class.getName(), new PeergreenPromptService(platformContext), null);
 
         fireEvent(OSGI_INIT, "OSGi Framework initialized");
 

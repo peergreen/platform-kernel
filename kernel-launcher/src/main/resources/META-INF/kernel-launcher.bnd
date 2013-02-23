@@ -18,7 +18,9 @@
 Export-Package !*
 
 Private-Package com.peergreen.kernel.*,\
-                org.ow2.shelbie.core.branding
+                org.ow2.shelbie.core.branding,\
+                org.ow2.shelbie.core.identity,\
+                org.ow2.shelbie.core.prompt
 
 Main-Class com.peergreen.kernel.Kernel
 
