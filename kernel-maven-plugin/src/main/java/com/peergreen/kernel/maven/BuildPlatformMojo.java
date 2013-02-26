@@ -71,6 +71,9 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Parameter(defaultValue = "com.peergreen.kernel/kernel-launcher/1.0.0-SNAPSHOT")
     private String launcher;
 
+    @Parameter(defaultValue = "com.peergreen.osgi.frameworkfactory/peergreen-osgi-frameworkfactory/1.0.0-SNAPSHOT")
+    private String frameworkWrapper;
+
     @Parameter(defaultValue = "com.peergreen.bootstrap/peergreen-bootstrap/1.0.0-SNAPSHOT")
     private String bootstrap;
 
@@ -116,6 +119,14 @@ public class BuildPlatformMojo extends AbstractMojo {
         unarchiver.setDestDirectory(classes);
         unarchiver.extract();
         archiver.addDirectory(classes, null, new String[]{"META-INF/**"});
+
+        // 1. Framework wrapper classes
+        // -------------------------------------
+        unarchiver.setSourceFile(resolveArtifact(frameworkWrapper));
+        unarchiver.setDestDirectory(classes);
+        unarchiver.extract();
+        archiver.addDirectory(classes, null, new String[]{"META-INF/MANIFEST.MF"});
+
 
         // 2. Bundles
         // -------------------------------------

@@ -34,6 +34,11 @@ import org.osgi.framework.launch.FrameworkFactory;
  */
 class FactoryFinder {
 
+    /**
+     * Peergreen OSGi framework ?
+     */
+    private static final String PEERGREEN_OSGI = "com.peergreen.osgi";
+
     private final static String RESOURCE = "META-INF/services/" + FrameworkFactory.class.getName();
 
     public FrameworkFactory find() throws Exception {
@@ -49,6 +54,11 @@ class FactoryFinder {
                     s = s.trim();
                     // Try to load first non-empty, non-commented line.
                     if ((s.length() > 0) && (s.charAt(0) != '#')) {
+
+                        // Avoid some loop
+                        if (s.startsWith(PEERGREEN_OSGI)) {
+                            continue;
+                        }
                         return Class.forName(s).asSubclass(FrameworkFactory.class).newInstance();
                     }
                 }

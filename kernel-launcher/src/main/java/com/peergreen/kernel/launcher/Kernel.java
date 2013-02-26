@@ -98,6 +98,16 @@ public class Kernel {
     private final EventKeeper eventKeeper = new DefaultEventKeeper();
 
 
+    /**
+     * First boot ? If the framework is initialized the first time (no cache), this flag will be true.
+     */
+    private boolean firstBoot;
+
+    /**
+     * Bundles installed by the kernel and to be started at first boot.
+     */
+    private Collection<Bundle> installedBundles;
+
     private final File storage;
     private final File unpackBundleDir;
 
@@ -108,11 +118,11 @@ public class Kernel {
 
     public static void main(String[] args) throws Exception {
         Kernel kernel = new Kernel();
-        kernel.prepare();
-        kernel.start();
+        kernel.startKernel(true);
     }
 
     public Kernel() throws MalformedURLException, URISyntaxException {
+
         // Where is the current jar ?
         URL location = Kernel.class.getProtectionDomain().getCodeSource().getLocation();
         URL path = new URL(location.getPath());
@@ -137,10 +147,51 @@ public class Kernel {
         this.userFrameworkStartLevel = userFrameworkStartLevel;
     }
 
-    private void prepare() throws Exception {
+    private void prepare()  throws Exception {
+        prepare(new HashMap<String, String>());
+    }
+
+
+    /**
+     * Set the given value for the given key in the configuration only if the key is not already here
+     * @param map the map containing the key/value
+     * @param key the key to merge
+     * @param value the value to apply
+     */
+    private void set(Map<String, String> map, String key, String value) {
+        // key not yet present or ant to apply in all case
+        if (!map.containsKey(key)) {
+            map.put(key, value);
+            return;
+        }
+
+    }
+
+
+     /**
+     * Merge the given value for the given key in the configuration. If the key is not already here, just add it else merge it.
+     * @param map the map containing the key/value
+     * @param key the key to merge
+     * @param value the value to apply
+     */
+    private void merge(Map<String, String> map, String key, String value) {
+        // key not yet present, just add it
+        if (!map.containsKey(key)) {
+            map.put(key, value);
+            return;
+        }
+
+        // Key is here, needs to merge
+        String existingValue = map.get(key);
+        String newValue = existingValue.concat(",").concat(value);
+
+        map.put(key, newValue);
+
+    }
+
+    private Framework prepare(Map<String, String> configuration) throws Exception {
         // Create the framework instance
         FrameworkFactory factory = findFrameworkFactory();
-        Map<String, String> configuration = new HashMap<String, String>();
 
         // Adapt system exported packages
         List<String> packages = new ArrayList<>();
@@ -154,16 +205,14 @@ public class Kernel {
         packages.add(BrandingService.class.getPackage().getName() + ";version=2.0");
         packages.add(PromptService.class.getPackage().getName() + ";version=2.0");
         packages.add(IdentityProvider.class.getPackage().getName() + ";version=2.0");
-        configuration.put(org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
+        merge(configuration, org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
 
         // Storage
-        configuration.put(org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
-        configuration.put("osgi.install.area", storage.getPath());
-
-
+        set(configuration, org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
+        set(configuration, "osgi.install.area", configuration.get(org.osgi.framework.Constants.FRAMEWORK_STORAGE));
 
         // I need to force the Framework StartLevel here, we will move up the FSL after initialisation
-        configuration.put(org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
+        set(configuration, org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
 
         framework = factory.newFramework(configuration);
 
@@ -171,6 +220,8 @@ public class Kernel {
         Thread.currentThread().setName("Peergreen Kernel Main thread");
 
         fireEvent(PLATFORM_PREPARE, "Platform is prepared");
+
+        return framework;
     }
 
     private static String join(List<String> values, String separator) {
@@ -210,17 +261,13 @@ public class Kernel {
         }
     }
 
-    private boolean isFirstBoot() {
-        // No cache, initial boot (we only have the system bundle installed)
-        return platformContext.getBundles().length == 1;
-    }
 
     private File getUserBundlesDirectory() {
         File user = new File(System.getProperty("user.dir"));
         return new File(user, "bundles");
     }
 
-    public void start() throws Exception {
+    private void init() throws Exception {
 
         // Init the framework
         // After this point, persisted bundles are re-installed (but not started)
@@ -238,20 +285,10 @@ public class Kernel {
         }
         platformContext = framework.getBundleContext();
 
-        // register prompt service
-        platformContext.registerService(PromptService.class.getName(), new PeergreenPromptService(platformContext), null);
+        // No cache, initial boot (we only have the system bundle installed)
+        firstBoot = (platformContext.getBundles().length == 1);
 
-        fireEvent(OSGI_INIT, "OSGi Framework initialized");
-
-        // Start the framework (going into ACTIVE state)
-        // Framework will move its StartLevel value up to 1
-        // Persisted bundles may be started depending of their own persisted start level
-        framework.start();
-        fireEvent(OSGI_START, "OSGi Framework started");
-
-        // Avoid scanning for bundles for subsequent boots
-        // They are already there because of the OSGi persistence
-        if (isFirstBoot()) {
+        if (firstBoot) {
             // Find the bundles to be installed
             List<BundleScanner> scanners = new ArrayList<BundleScanner>();
             scanners.add(new BootstrapJarScanner());
@@ -263,15 +300,30 @@ public class Kernel {
             }
 
             // Install any discovered bundles
-            Collection<Bundle> bundles = installBundles(resources);
+            installedBundles = installBundles(resources);
 
             fireEvent(BUNDLES_INSTALL, "Bundles installed");
+        }
+        // register prompt service
+        platformContext.registerService(PromptService.class.getName(), new PeergreenPromptService(platformContext), null);
 
+        fireEvent(OSGI_INIT, "OSGi Framework initialized");
+    }
+
+
+    private void start(boolean waitForStop) throws Exception {
+        // Start the framework (going into ACTIVE state)
+        // Framework will move its StartLevel value up to 1
+        // Persisted bundles may be started depending of their own persisted start level
+        framework.start();
+        fireEvent(OSGI_START, "OSGi Framework started");
+
+        // start the installed bundles at the init phase
+        if (firstBoot) {
             // Start the installed bundles
-            startBundles(bundles);
+            startBundles(installedBundles);
 
             fireEvent(BUNDLES_START, "Bundles started");
-
         }
 
         platformContext.registerService(BrandingService.class.getName(), new PeergreenBrandingService(), null);
@@ -290,7 +342,9 @@ public class Kernel {
         setFrameworkStartLevel();
 
         // Wait for the framework to stop indefinitely
-        framework.waitForStop(0);
+        if (waitForStop) {
+            framework.waitForStop(0);
+        }
     }
 
 
@@ -385,6 +439,9 @@ public class Kernel {
     }
 
     private void startBundles(Collection<Bundle> bundles) {
+        if (bundles == null) {
+            return;
+        }
 
         // Start the installed bundles, respecting the activation policy if needed
         for (Bundle bundle : bundles) {
@@ -520,4 +577,16 @@ public class Kernel {
     private void fireEvent(String id, String message) {
         fireEvent(id, 0, message);
     }
+
+    /**
+     * Public method used to start the kernel
+     * @param wait (if true wait at the end of the start)
+     * @throws Exception if start of the kernel fails
+     */
+    public void startKernel(boolean wait) throws Exception {
+        prepare();
+        init();
+        start(true);
+    }
+
 }
