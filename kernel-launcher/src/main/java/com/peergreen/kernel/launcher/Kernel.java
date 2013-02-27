@@ -82,21 +82,53 @@ import com.peergreen.kernel.launcher.scanner.BootstrapJarScanner;
 import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
-import com.peergreen.kernel.launcher.shell.Times;
 
 /**
+ * Kernel is the root class for embedding/starting Peergreen platform kernel.
+ * @author Florent Benoit
  * @author Guillaume Sauthier
  */
 public class Kernel {
 
+    /**
+     * Pattern used to extract the start level from the directory path
+     */
     public static final Pattern STARTLEVEL_PATTERN = Pattern.compile(".*/bundles/(\\d+)/.*");
 
+    /**
+     * Underlying OSGi Framework
+     */
     private Framework framework;
+
+    /**
+     * Store data about the platform
+     */
     private final DefaultPlatformInfo info = new DefaultPlatformInfo();
+
+    /**
+     * Bundle context of the platform
+     */
     private BundleContext platformContext;
+
+    /**
+     * Reporter used to send alert (error, warning) messages
+     */
     private final Reporter reporter = new Reporter();
+
+    /**
+     * Manage events.
+     */
     private final EventKeeper eventKeeper = new DefaultEventKeeper();
 
+    /**
+     * Branding service;
+     */
+    private BrandingService brandingService;
+
+    /**
+     * Prompt service;
+     */
+    private PromptService promptService;
 
     /**
      * First boot ? If the framework is initialized the first time (no cache), this flag will be true.
@@ -113,7 +145,14 @@ public class Kernel {
      */
     private Collection<Bundle> installedBundles;
 
+    /**
+     * Directory used to store bundles.
+     */
     private final File storage;
+
+    /**
+     * Directory used to extract {@link Pack200} files.
+     */
     private final File unpackBundleDir;
 
     /**
@@ -121,7 +160,13 @@ public class Kernel {
      */
     private int userFrameworkStartLevel = -1;
 
+    /**
+     * Starts a default kernel with a console.
+     * @param args some options
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
+        // FIXME : allows to disable the console from arguments ?
         Kernel kernel = new Kernel();
         kernel.enableConsoleAtStartup();
         kernel.startKernel(true);
@@ -134,11 +179,10 @@ public class Kernel {
         URL path = new URL(location.getPath());
         File locationFile = new File(path.toURI()).getParentFile().getParentFile().getParentFile();
 
+        //FIXME: use constants for String
         File workDirectory = new File(locationFile, "peergreen");
-
         unpackBundleDir = new File(workDirectory, "bundles");
         storage = new File(workDirectory, "storage");
-
 
         initEventKeeper();
     }
@@ -195,13 +239,23 @@ public class Kernel {
 
     }
 
-    private Framework prepare(Map<String, String> configuration) throws Exception {
+    /**
+     * Creates the OSGi {@link Framework} from the OSGi {@link FrameworkFactory}<br>
+     * Also add peergreen configuration for exporting some system packages
+     * @param configuration the map used to store configuration
+     * @return the Framework that has been initialized.
+     * @throws Exception if Framework cannot be instantiated
+     */
+    private Framework prepare(final Map<String, String> configuration) throws Exception {
         // Create the framework instance
         FrameworkFactory factory = findFrameworkFactory();
 
         // Adapt system exported packages
         List<String> packages = new ArrayList<>();
-        packages.add("org.w3c.dom.traversal,javax.transaction;version=1.1.0");
+
+        //FIXME: needed ?
+        packages.add("org.w3c.dom.traversal");
+        packages.add("javax.transaction;version=1.1.0");
         packages.add("javax.transaction.xa;version=1.1.0");
         packages.add(EventKeeper.class.getPackage().getName());
         packages.add(PlatformInfo.class.getPackage().getName());
@@ -267,12 +321,18 @@ public class Kernel {
         }
     }
 
-
+    /**
+     * @return user bundle directory from {@link System.getProperty("user.dir")}
+     */
     private File getUserBundlesDirectory() {
         File user = new File(System.getProperty("user.dir"));
         return new File(user, "bundles");
     }
 
+    /**
+     * Initialize the underlying OSGi framework and install platform bundles and services.
+     * @throws Exception if initialization fails
+     */
     private void init() throws Exception {
 
         // Init the framework
@@ -294,12 +354,18 @@ public class Kernel {
         // No cache, initial boot (we only have the system bundle installed)
         firstBoot = (platformContext.getBundles().length == 1);
 
+        // register services / listener callbacks
+        registerServices();
+
+        // First boot, needs to install bundles
+        // If not, framework has restored them
         if (firstBoot) {
             // Find the bundles to be installed
             List<BundleScanner> scanners = new ArrayList<BundleScanner>();
             scanners.add(new BootstrapJarScanner());
             scanners.add(new BundleDirectoryScanner(getUserBundlesDirectory()));
 
+            // Gets result from scanner
             List<URL> resources = new ArrayList<>();
             for (BundleScanner scanner : scanners) {
                 resources.addAll(scanner.scan());
@@ -310,13 +376,54 @@ public class Kernel {
 
             fireEvent(BUNDLES_INSTALL, "Bundles installed");
         }
-        // register prompt service
-        platformContext.registerService(PromptService.class.getName(), new PeergreenPromptService(platformContext), null);
 
         fireEvent(OSGI_INIT, "OSGi Framework initialized");
     }
 
 
+    /**
+     * Register services of peergreen platform and listeners.
+     */
+    private void registerServices() {
+        // create missing services
+        this.brandingService = new PeergreenBrandingService();
+        this.promptService = new PeergreenPromptService(platformContext);
+
+        // register them
+        platformContext.registerService(BrandingService.class.getName(), brandingService, null);
+        platformContext.registerService(PromptService.class.getName(), promptService, null);
+        platformContext.registerService(PlatformInfo.class.getName(), info, null);
+        platformContext.registerService(EventKeeper.class, eventKeeper, null);
+
+        // Register platform related commands
+        Dictionary<String, Object> dict = new Hashtable<String, Object>();
+        dict.put("osgi.command.scope", "info");
+        dict.put("osgi.command.function", Infos.FUNCTIONS);
+        platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
+
+        dict.put("osgi.command.function", Events.FUNCTIONS);
+        platformContext.registerService(Events.class.getName(), new Events(eventKeeper), dict);
+
+        // Register a FrameworkListener to be notified of Bundles
+        // failures when we'll set the framework StartLevel
+        platformContext.addFrameworkListener(new FrameworkListener() {
+            @Override
+            public void frameworkEvent(FrameworkEvent event) {
+                if (FrameworkEvent.ERROR == event.getType()) {
+                    reporter.addMessage(new Message(Severity.ERROR, event.getThrowable(), event.getBundle()));
+                }
+            }
+        });
+
+    }
+
+
+
+    /**
+     * Starts the OSGi {@link Framework}.
+     * @param waitForStop allows to wait the shutdown of the platform if true
+     * @throws Exception if start fails
+     */
     private void start(boolean waitForStop) throws Exception {
         // Start the framework (going into ACTIVE state)
         // Framework will move its StartLevel value up to 1
@@ -332,26 +439,10 @@ public class Kernel {
             fireEvent(BUNDLES_START, "Bundles started");
         }
 
-        // Branding
-        BrandingService brandingService = new PeergreenBrandingService();
-
         // No startup console so display the banner
         if (!consoleAtStartup) {
             System.out.println(brandingService.getBanner(false));
         }
-        platformContext.registerService(BrandingService.class.getName(), brandingService, null);
-
-
-        // Register a FrameworkListener to be notified of Bundles
-        // failures when we'll set the framework StartLevel
-        platformContext.addFrameworkListener(new FrameworkListener() {
-            @Override
-            public void frameworkEvent(FrameworkEvent event) {
-                if (FrameworkEvent.ERROR == event.getType()) {
-                    reporter.addMessage(new Message(Severity.ERROR, event.getThrowable(), event.getBundle()));
-                }
-            }
-        });
 
         setFrameworkStartLevel();
 
@@ -362,6 +453,11 @@ public class Kernel {
     }
 
 
+    /**
+     * Unpack the given file through its location
+     * @param location the path of the pack200 file.
+     * @return the path where the file has been unpacked
+     */
     protected String unpack200(URL location) {
         Unpacker unpacker = Pack200.newUnpacker();
 
@@ -404,8 +500,13 @@ public class Kernel {
         }
     }
 
-
-    private Collection<Bundle> installBundles(List<URL> resources) throws BundleException {
+    /**
+     * Install the given collection of bundles
+     * @param resources the collection of URL to install
+     * @return the list of installed bundles that needs to be started
+     * @throws BundleException
+     */
+    private Collection<Bundle> installBundles(Collection<URL> resources) throws BundleException {
 
         unpackBundleDir.mkdirs();
         Collection<Bundle> bundles = new ArrayList<Bundle>();
@@ -443,7 +544,7 @@ public class Kernel {
                 }
             }
 
-            // Do not store fragment bundles (they can't be installed)
+            // Do not store fragment bundles (they can't be started)
             if (!isFragment(bundle)) {
 
                 // Set the appropriate Bundle StartLevel (if required)
@@ -514,44 +615,23 @@ public class Kernel {
         return new FactoryFinder().find();
     }
 
-    private void terminateStartup() {
 
-        // Register our services
+    /**
+     * Platform has successfully started. Add startup time
+     */
+    private void successfulStartup() {
+
+        // Sets the startup time
         long startTime = info.getStartDate().getTime();
         info.setStartupTime(System.currentTimeMillis() - startTime);
-        platformContext.registerService(PlatformInfo.class.getName(),
-                info,
-                null);
 
-        platformContext.registerService(EventKeeper.class, eventKeeper, null);
-
-        // Register platform related commands
-        Dictionary<String, Object> dict = new Hashtable<String, Object>();
-        dict.put("osgi.command.scope", "info");
-        dict.put("osgi.command.function", Infos.FUNCTIONS);
-        platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
-
-        dict.put("osgi.command.function", Events.FUNCTIONS);
-        platformContext.registerService(Events.class.getName(), new Events(eventKeeper), dict);
-
-        printSuccessfulStartup();
     }
 
-    private void printSuccessfulStartup() {
-        FrameworkStartLevel fsl = framework.adapt(FrameworkStartLevel.class);
-        System.out.printf("Peergreen Kernel started in %s (Bundles:%d, StartLevel:%d).%n",
-                Times.printDuration(info.getStartupTime()),
-                platformContext.getBundles().length,
-                fsl.getStartLevel());
-        List<Message> warnings = reporter.getWarnings();
-        if (!warnings.isEmpty()) {
-            for (Message warning : warnings) {
-                System.out.printf("  * %s%n", warning.toString());
-            }
-        }
-    }
 
-    private void printFailedStartup() {
+    /**
+     * Platform has failed. Prints the errors.
+     */
+    private void failedStartup() {
         System.out.printf("Peergreen Kernel started with error(s) (details below).%n");
         List<Message> warnings = reporter.getWarnings();
         if (!warnings.isEmpty()) {
@@ -578,9 +658,9 @@ public class Kernel {
                     break;
                 case FrameworkEvent.STARTLEVEL_CHANGED:
                     if (reporter.getErrors().isEmpty()) {
-                        terminateStartup();
+                        successfulStartup();
                     } else {
-                        printFailedStartup();
+                        failedStartup();
                     }
             }
         }
