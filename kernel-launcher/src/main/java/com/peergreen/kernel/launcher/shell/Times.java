@@ -36,6 +36,12 @@ public class Times {
      * @return the time used for displaying on screen or in logs
      */
     public static String printDuration(double uptime) {
+
+        // Not available
+        if (uptime == 0 || uptime == -1) {
+            return "N/A";
+        }
+
         // Code taken from Karaf
         // https://svn.apache.org/repos/asf/felix/trunk/karaf/shell/commands/src/main/java/org/apache/felix/karaf/shell/commands/InfoAction.java
 
