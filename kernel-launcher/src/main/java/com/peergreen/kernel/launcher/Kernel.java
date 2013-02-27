@@ -104,6 +104,11 @@ public class Kernel {
     private boolean firstBoot;
 
     /**
+     * Enable/Disable console at startup ?
+     */
+    private boolean consoleAtStartup = false;
+
+    /**
      * Bundles installed by the kernel and to be started at first boot.
      */
     private Collection<Bundle> installedBundles;
@@ -118,6 +123,7 @@ public class Kernel {
 
     public static void main(String[] args) throws Exception {
         Kernel kernel = new Kernel();
+        kernel.enableConsoleAtStartup();
         kernel.startKernel(true);
     }
 
@@ -326,7 +332,15 @@ public class Kernel {
             fireEvent(BUNDLES_START, "Bundles started");
         }
 
-        platformContext.registerService(BrandingService.class.getName(), new PeergreenBrandingService(), null);
+        // Branding
+        BrandingService brandingService = new PeergreenBrandingService();
+
+        // No startup console so display the banner
+        if (!consoleAtStartup) {
+            System.out.println(brandingService.getBanner(false));
+        }
+        platformContext.registerService(BrandingService.class.getName(), brandingService, null);
+
 
         // Register a FrameworkListener to be notified of Bundles
         // failures when we'll set the framework StartLevel
@@ -409,6 +423,12 @@ public class Kernel {
                 // Add reference:
                 location = "reference:".concat(newLocation);
             }
+
+            // Skip console startup ?
+            if (!consoleAtStartup && location.contains("startup-console")) {
+                continue;
+            }
+
 
             Bundle bundle = null;
             try {
@@ -587,6 +607,11 @@ public class Kernel {
         prepare();
         init();
         start(true);
+    }
+
+
+    public void enableConsoleAtStartup() {
+        this.consoleAtStartup = true;
     }
 
 }
