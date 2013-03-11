@@ -82,9 +82,11 @@ import com.peergreen.kernel.launcher.scanner.BootstrapJarScanner;
 import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
+import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
 
 /**
  * Kernel is the root class for embedding/starting Peergreen platform kernel.
+ *
  * @author Florent Benoit
  * @author Guillaume Sauthier
  */
@@ -159,9 +161,11 @@ public class Kernel {
      * Framework StartLevel value provided by the user;
      */
     private int userFrameworkStartLevel = -1;
+    private PeergreenThreadGroup threadGroup;
 
     /**
      * Starts a default kernel with a console.
+     *
      * @param args some options
      * @throws Exception
      */
@@ -191,21 +195,22 @@ public class Kernel {
         if (userFrameworkStartLevel < 1) {
             throw new IllegalArgumentException(
                     String.format("Framework StartLevel value has to be higher (or equal) than 1 (actual value:%d).",
-                                  userFrameworkStartLevel)
+                            userFrameworkStartLevel)
             );
         }
         this.userFrameworkStartLevel = userFrameworkStartLevel;
     }
 
-    private void prepare()  throws Exception {
+    private void prepare() throws Exception {
         prepare(new HashMap<String, String>());
     }
 
 
     /**
      * Set the given value for the given key in the configuration only if the key is not already here
-     * @param map the map containing the key/value
-     * @param key the key to merge
+     *
+     * @param map   the map containing the key/value
+     * @param key   the key to merge
      * @param value the value to apply
      */
     private void set(Map<String, String> map, String key, String value) {
@@ -218,10 +223,11 @@ public class Kernel {
     }
 
 
-     /**
+    /**
      * Merge the given value for the given key in the configuration. If the key is not already here, just add it else merge it.
-     * @param map the map containing the key/value
-     * @param key the key to merge
+     *
+     * @param map   the map containing the key/value
+     * @param key   the key to merge
      * @param value the value to apply
      */
     private void merge(Map<String, String> map, String key, String value) {
@@ -242,6 +248,7 @@ public class Kernel {
     /**
      * Creates the OSGi {@link Framework} from the OSGi {@link FrameworkFactory}<br>
      * Also add peergreen configuration for exporting some system packages
+     *
      * @param configuration the map used to store configuration
      * @return the Framework that has been initialized.
      * @throws Exception if Framework cannot be instantiated
@@ -277,7 +284,7 @@ public class Kernel {
         framework = factory.newFramework(configuration);
 
         // Change Thread name
-        Thread.currentThread().setName("Peergreen Kernel Main thread");
+        Thread.currentThread().setName("Peergreen Kernel Main Thread");
 
         fireEvent(PLATFORM_PREPARE, "Platform is prepared");
 
@@ -322,7 +329,7 @@ public class Kernel {
     }
 
     /**
-     * @return user bundle directory from {@link System.getProperty("user.dir")}
+     * @return user bundle directory from {@code System.getProperty("user.dir")}
      */
     private File getUserBundlesDirectory() {
         File user = new File(System.getProperty("user.dir"));
@@ -331,6 +338,7 @@ public class Kernel {
 
     /**
      * Initialize the underlying OSGi framework and install platform bundles and services.
+     *
      * @throws Exception if initialization fails
      */
     private void init() throws Exception {
@@ -404,6 +412,10 @@ public class Kernel {
         dict.put("osgi.command.function", Events.FUNCTIONS);
         platformContext.registerService(Events.class.getName(), new Events(eventKeeper), dict);
 
+        // Register Thread related services
+        threadGroup = new PeergreenThreadGroup(platformContext);
+        threadGroup.open();
+
         // Register a FrameworkListener to be notified of Bundles
         // failures when we'll set the framework StartLevel
         platformContext.addFrameworkListener(new FrameworkListener() {
@@ -418,9 +430,9 @@ public class Kernel {
     }
 
 
-
     /**
      * Starts the OSGi {@link Framework}.
+     *
      * @param waitForStop allows to wait the shutdown of the platform if true
      * @throws Exception if start fails
      */
@@ -455,6 +467,7 @@ public class Kernel {
 
     /**
      * Unpack the given file through its location
+     *
      * @param location the path of the pack200 file.
      * @return the path where the file has been unpacked
      */
@@ -502,6 +515,7 @@ public class Kernel {
 
     /**
      * Install the given collection of bundles
+     *
      * @param resources the collection of URL to install
      * @return the list of installed bundles that needs to be started
      * @throws BundleException
@@ -669,8 +683,8 @@ public class Kernel {
     private void fireEvent(String id, long timestamp, String message) {
         eventKeeper.logEvent(
                 new DefaultEvent(id,
-                                 (timestamp == 0) ? System.currentTimeMillis() : timestamp,
-                                 message)
+                        (timestamp == 0) ? System.currentTimeMillis() : timestamp,
+                        message)
         );
     }
 
@@ -680,13 +694,14 @@ public class Kernel {
 
     /**
      * Public method used to start the kernel
+     *
      * @param wait (if true wait at the end of the start)
      * @throws Exception if start of the kernel fails
      */
     public void startKernel(boolean wait) throws Exception {
         prepare();
         init();
-        start(true);
+        start(wait);
     }
 
 
