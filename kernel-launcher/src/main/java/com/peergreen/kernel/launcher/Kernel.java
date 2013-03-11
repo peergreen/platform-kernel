@@ -29,8 +29,10 @@ import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_PR
 import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_READY;
 import static com.peergreen.kernel.launcher.event.Constants.Properties.PROPERTY_BOOTSTRAP_BEGIN;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -66,6 +68,7 @@ import org.osgi.framework.startlevel.FrameworkStartLevel;
 import org.ow2.shelbie.core.branding.BrandingService;
 import org.ow2.shelbie.core.identity.IdentityProvider;
 import org.ow2.shelbie.core.prompt.PromptService;
+import org.ow2.shelbie.core.system.SystemService;
 
 import com.peergreen.kernel.event.EventKeeper;
 import com.peergreen.kernel.info.PlatformInfo;
@@ -82,6 +85,7 @@ import com.peergreen.kernel.launcher.scanner.BootstrapJarScanner;
 import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
+import com.peergreen.kernel.launcher.system.PeergreenSystemService;
 import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
 
 /**
@@ -123,14 +127,19 @@ public class Kernel {
     private final EventKeeper eventKeeper = new DefaultEventKeeper();
 
     /**
-     * Branding service;
+     * Shelbie Branding service;
      */
     private BrandingService brandingService;
 
     /**
-     * Prompt service;
+     * Shelbie Prompt service;
      */
     private PromptService promptService;
+
+    /**
+     * Shelbie System service;
+     */
+    private SystemService systemService;
 
     /**
      * First boot ? If the framework is initialized the first time (no cache), this flag will be true.
@@ -146,6 +155,11 @@ public class Kernel {
      * Bundles installed by the kernel and to be started at first boot.
      */
     private Collection<Bundle> installedBundles;
+
+    /**
+     * Working directory.
+     */
+    private final File workDirectory;
 
     /**
      * Directory used to store bundles.
@@ -164,6 +178,37 @@ public class Kernel {
     private PeergreenThreadGroup threadGroup;
 
     /**
+     * Original InputStream for reading.
+     */
+    private final InputStream systemIn;
+
+    /**
+     * Original PrintStream for output.
+     */
+    private final PrintStream systemOut;
+
+    /**
+     * Original PrintStream for errors.
+     */
+    private final PrintStream systemErr;
+
+    /**
+     * Peergreen InputStream for reading.
+     */
+    private InputStream in;
+
+    /**
+     * Peergreen PrintStream for output.
+     */
+    private PrintStream out;
+
+    /**
+     * Peergreen PrintStream for errors.
+     */
+    private PrintStream err;
+
+
+    /**
      * Starts a default kernel with a console.
      *
      * @param args some options
@@ -178,15 +223,22 @@ public class Kernel {
 
     public Kernel() throws MalformedURLException, URISyntaxException {
 
+        // Store Sytem.*
+        this.systemIn = System.in;
+        this.systemOut = System.out;
+        this.systemErr = System.err;
+
+
+
         // Where is the current jar ?
         URL location = Kernel.class.getProtectionDomain().getCodeSource().getLocation();
         URL path = new URL(location.getPath());
         File locationFile = new File(path.toURI()).getParentFile().getParentFile().getParentFile();
 
         //FIXME: use constants for String
-        File workDirectory = new File(locationFile, "peergreen");
-        unpackBundleDir = new File(workDirectory, "bundles");
-        storage = new File(workDirectory, "storage");
+        this.workDirectory = new File(locationFile, "peergreen");
+        this.unpackBundleDir = new File(workDirectory, "bundles");
+        this.storage = new File(workDirectory, "storage");
 
         initEventKeeper();
     }
@@ -271,6 +323,7 @@ public class Kernel {
         // And that these services should be used instead of default one
         packages.add(BrandingService.class.getPackage().getName() + ";version=2.0");
         packages.add(PromptService.class.getPackage().getName() + ";version=2.0");
+        packages.add(SystemService.class.getPackage().getName() + ";version=2.0");
         packages.add(IdentityProvider.class.getPackage().getName() + ";version=2.0");
         merge(configuration, org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
 
@@ -396,10 +449,15 @@ public class Kernel {
         // create missing services
         this.brandingService = new PeergreenBrandingService();
         this.promptService = new PeergreenPromptService(platformContext);
+        this.systemService = new PeergreenSystemService(platformContext);
+        this.systemService.setIn(systemIn);
+        this.systemService.setOut(systemOut);
+        this.systemService.setErr(systemErr);
 
         // register them
         platformContext.registerService(BrandingService.class.getName(), brandingService, null);
         platformContext.registerService(PromptService.class.getName(), promptService, null);
+        platformContext.registerService(SystemService.class.getName(), systemService, null);
         platformContext.registerService(PlatformInfo.class.getName(), info, null);
         platformContext.registerService(EventKeeper.class, eventKeeper, null);
 
@@ -453,7 +511,7 @@ public class Kernel {
 
         // No startup console so display the banner
         if (!consoleAtStartup) {
-            System.out.println(brandingService.getBanner(false));
+            systemOut.println(brandingService.getBanner(false));
         }
 
         setFrameworkStartLevel();
@@ -461,6 +519,11 @@ public class Kernel {
         // Wait for the framework to stop indefinitely
         if (waitForStop) {
             framework.waitForStop(0);
+            // restore streams
+            System.setIn(systemIn);
+            System.setOut(systemOut);
+            System.setErr(systemErr);
+
         }
     }
 
@@ -650,13 +713,13 @@ public class Kernel {
         List<Message> warnings = reporter.getWarnings();
         if (!warnings.isEmpty()) {
             for (Message warning : warnings) {
-                System.out.printf("  * %s%n", warning.toString());
+                systemOut.printf("  * %s%n", warning.toString());
             }
         }
         List<Message> errors = reporter.getErrors();
         if (!errors.isEmpty()) {
             for (Message error : errors) {
-                System.out.printf("  * %s%n", error.toString());
+                systemErr.printf("  * %s%n", error.toString());
             }
         }
     }
@@ -707,6 +770,27 @@ public class Kernel {
 
     public void enableConsoleAtStartup() {
         this.consoleAtStartup = true;
+
+
+        File logs = new File(workDirectory, "logs");
+        logs.mkdirs();
+
+        // Wrap the streams
+        this.in = new ByteArrayInputStream(new byte[0]);
+        System.setIn(this.in);
+        try {
+            this.out = new PrintStream(new File(logs, "system.out"));
+        } catch (FileNotFoundException e) {
+            throw new IllegalStateException("Cannot create log file", e);
+        }
+        System.setOut(this.out);
+        try {
+            this.err = new PrintStream(new File(logs, "system.err"));
+        } catch (FileNotFoundException e) {
+            throw new IllegalStateException("Cannot create log file", e);
+        }
+        System.setErr(this.err);
+
     }
 
 }
