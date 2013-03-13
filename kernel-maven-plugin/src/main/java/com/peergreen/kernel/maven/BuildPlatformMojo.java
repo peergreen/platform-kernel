@@ -165,7 +165,7 @@ public class BuildPlatformMojo extends AbstractMojo {
             String path = artifactFile.getName();
             String prefix = BUNDLES;
             if (level > 1) {
-                prefix += String.valueOf(level);
+                prefix += "/".concat(String.valueOf(level));
             }
             archiver.addFile(artifactFile, prefix + "/" + path);
         }
