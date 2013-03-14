@@ -16,11 +16,13 @@
 
 package com.peergreen.kernel.launcher.branding;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+
 import org.ow2.shelbie.core.branding.BrandingService;
 import org.ow2.shelbie.core.branding.Script;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * User: guillaume
@@ -51,7 +53,25 @@ public class PeergreenBrandingService implements BrandingService {
 
     @Override
     public Script getScript() {
-        return null;
+
+        Script script = new Script() {
+
+            @Override
+            public Iterator<String> iterator() {
+                return Arrays.asList(new String[] {
+                        "shelbie:echo \"Welcome on @|bold,blue Peergreen Platform|@:\"",
+                        "shelbie:echo \"  - Enter @|bold help|@ or hit @|bold TAB|@ key to list available commands.\"",
+                        "shelbie:echo \"  - Enter @|bold shutdown|@ or hit @|bold CTRL^D|@ key to shutdown the platform.\"",
+                        "shelbie:echo \"\"",
+                        "newsfeed:get-news"}).iterator();
+            }
+
+            @Override
+            public String getName() {
+                return "welcome";
+            }
+        };
+        return script;
     }
 
     @Override
