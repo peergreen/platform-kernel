@@ -159,17 +159,17 @@ public class Kernel {
     /**
      * Working directory.
      */
-    private final File workDirectory;
+    private File workDirectory;
 
     /**
      * Directory used to store bundles.
      */
-    private final File storage;
+    private File storage;
 
     /**
      * Directory used to extract {@link Pack200} files.
      */
-    private final File unpackBundleDir;
+    private File unpackBundleDir;
 
     /**
      * Framework StartLevel value provided by the user;
@@ -227,18 +227,6 @@ public class Kernel {
         this.systemIn = System.in;
         this.systemOut = System.out;
         this.systemErr = System.err;
-
-
-
-        // Where is the current jar ?
-        URL location = Kernel.class.getProtectionDomain().getCodeSource().getLocation();
-        URL path = new URL(location.getPath());
-        File locationFile = new File(path.toURI()).getParentFile().getParentFile().getParentFile();
-
-        //FIXME: use constants for String
-        this.workDirectory = new File(locationFile, "peergreen");
-        this.unpackBundleDir = new File(workDirectory, "bundles");
-        this.storage = new File(workDirectory, "storage");
 
         initEventKeeper();
     }
@@ -309,6 +297,25 @@ public class Kernel {
         // Create the framework instance
         FrameworkFactory factory = findFrameworkFactory();
 
+
+        String existingFrameworkStorage = configuration.get(org.osgi.framework.Constants.FRAMEWORK_STORAGE);
+        if (existingFrameworkStorage != null) {
+            workDirectory = new File(existingFrameworkStorage);
+        }
+
+        // Set directories
+        if (workDirectory == null) {
+            // Where is the current jar ?
+            URL location = Kernel.class.getProtectionDomain().getCodeSource().getLocation();
+            URL path = new URL(location.getPath());
+            File locationFile = new File(path.toURI()).getParentFile().getParentFile().getParentFile();
+            this.workDirectory = new File(locationFile, "peergreen");
+        }
+        this.unpackBundleDir = new File(workDirectory, "bundles");
+        this.storage = new File(workDirectory, "storage");
+
+        initStreams();
+
         // Adapt system exported packages
         List<String> packages = new ArrayList<>();
 
@@ -342,6 +349,29 @@ public class Kernel {
         fireEvent(PLATFORM_PREPARE, "Platform is prepared");
 
         return framework;
+    }
+
+    private void initStreams() {
+        if (consoleAtStartup) {
+            File logs = new File(workDirectory, "logs");
+            logs.mkdirs();
+
+            // Wrap the streams
+            this.in = new ByteArrayInputStream(new byte[0]);
+            System.setIn(this.in);
+            try {
+                this.out = new PrintStream(new File(logs, "system.out"));
+            } catch (FileNotFoundException e) {
+                throw new IllegalStateException("Cannot create log file", e);
+            }
+            System.setOut(this.out);
+            try {
+                this.err = new PrintStream(new File(logs, "system.err"));
+            } catch (FileNotFoundException e) {
+                throw new IllegalStateException("Cannot create log file", e);
+            }
+            System.setErr(this.err);
+        }
     }
 
     private static String join(List<String> values, String separator) {
@@ -770,27 +800,7 @@ public class Kernel {
 
     public void enableConsoleAtStartup() {
         this.consoleAtStartup = true;
-
-
-        File logs = new File(workDirectory, "logs");
-        logs.mkdirs();
-
-        // Wrap the streams
-        this.in = new ByteArrayInputStream(new byte[0]);
-        System.setIn(this.in);
-        try {
-            this.out = new PrintStream(new File(logs, "system.out"));
-        } catch (FileNotFoundException e) {
-            throw new IllegalStateException("Cannot create log file", e);
-        }
-        System.setOut(this.out);
-        try {
-            this.err = new PrintStream(new File(logs, "system.err"));
-        } catch (FileNotFoundException e) {
-            throw new IllegalStateException("Cannot create log file", e);
-        }
-        System.setErr(this.err);
-
     }
+
 
 }
