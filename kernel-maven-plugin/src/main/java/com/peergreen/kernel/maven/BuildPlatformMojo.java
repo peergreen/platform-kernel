@@ -101,6 +101,11 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}/pack200")
     private File pack200Dir;
 
+    @Parameter(defaultValue = "${project.build.directory}/frameworkWrapper")
+    private File frameworkWrapperDirectory;
+
+    @Parameter(defaultValue = "${project.build.directory}/specification")
+    private File specificationDirectory;
 
     @Parameter(defaultValue = "${project.build.outputDirectory}")
     private File classes;
@@ -125,19 +130,32 @@ public class BuildPlatformMojo extends AbstractMojo {
         classes.delete();
         classes.mkdirs();
 
-        // 1. Bootstrap classes
+        // 1. Classes at root level
+        // -------------------------------------
+
+        // Bootstrap
         // -------------------------------------
         unarchiver.setSourceFile(resolveArtifact(bootstrap));
         unarchiver.setDestDirectory(classes);
         unarchiver.extract();
         archiver.addDirectory(classes, null, new String[]{"META-INF/**"});
 
-        // 1. Framework wrapper classes
+        // Framework wrapper
         // -------------------------------------
+        frameworkWrapperDirectory.mkdirs();
         unarchiver.setSourceFile(resolveArtifact(frameworkWrapper));
-        unarchiver.setDestDirectory(classes);
+        unarchiver.setDestDirectory(frameworkWrapperDirectory);
         unarchiver.extract();
-        archiver.addDirectory(classes, null, new String[]{"META-INF/MANIFEST.MF"});
+        archiver.addDirectory(frameworkWrapperDirectory, null, new String[]{"META-INF/MANIFEST.MF", "META-INF/maven/**"});
+
+        // OSGi Specification
+        // -------------------------------------
+        specificationDirectory.mkdirs();
+        File specFile = resolveArtifact(specification);
+        unarchiver.setSourceFile(specFile);
+        unarchiver.setDestDirectory(specificationDirectory);
+        unarchiver.extract();
+        archiver.addDirectory(specificationDirectory, null, new String[]{"about.html", "LICENSE", "OSGI-OPT/**", "META-INF/**"});
 
 
         // 2. Bundles
@@ -185,14 +203,10 @@ public class BuildPlatformMojo extends AbstractMojo {
         // 3. Lib
         // -------------------------------------
         File frameworkFile = resolveArtifact(framework);
-        File specFile = resolveArtifact(specification);
-        File launcherFile = resolveArtifact(launcher);
         if (frameworkFile != null) {
             archiver.addFile(frameworkFile, LIB + frameworkFile.getName());
         }
-        if (specFile != null) {
-            archiver.addFile(specFile, LIB + specFile.getName());
-        }
+        File launcherFile = resolveArtifact(launcher);
         if (launcherFile != null) {
             archiver.addFile(launcherFile, LIB + launcherFile.getName());
         }
@@ -201,7 +215,7 @@ public class BuildPlatformMojo extends AbstractMojo {
         // -------------------------------------
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().putValue("Main-Class", mainClass);
-        manifest.getMainAttributes().putValue("Class-Path", path(LIB, specFile, frameworkFile, launcherFile));
+        manifest.getMainAttributes().putValue("Class-Path", path(LIB, frameworkFile, launcherFile));
         try {
             ((JarArchiver) archiver).addConfiguredManifest(manifest);
         } catch (ManifestException e) {
