@@ -16,9 +16,11 @@
 
 package com.peergreen.kernel.launcher.branding;
 
-import java.util.Arrays;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.ow2.shelbie.core.branding.BrandingService;
@@ -30,6 +32,11 @@ import org.ow2.shelbie.core.branding.Script;
  * Time: 15:46
  */
 public class PeergreenBrandingService implements BrandingService {
+
+    private File redirectedSystemOut;
+    private File redirectedSystemErr;
+
+
 
     private static final String BANNER = "" +
             "     ___                                                       ___  _         _     __                         \n" +
@@ -58,12 +65,23 @@ public class PeergreenBrandingService implements BrandingService {
 
             @Override
             public Iterator<String> iterator() {
-                return Arrays.asList(new String[] {
-                        "shelbie:echo \"Welcome on @|bold,blue Peergreen Platform|@:\"",
-                        "shelbie:echo \"  - Enter @|bold help|@ or hit @|bold TAB|@ key to list available commands.\"",
-                        "shelbie:echo \"  - Enter @|bold shutdown|@ or hit @|bold CTRL^D|@ key to shutdown the platform.\"",
-                        "shelbie:echo \"\"",
-                        "newsfeed:get-news"}).iterator();
+                List<String> lines = new ArrayList<>();
+
+                lines.add("shelbie:echo \"Welcome on @|bold,blue Peergreen Platform|@:\"");
+                lines.add("shelbie:echo \"  - Enter @|bold help|@ or hit @|bold TAB|@ key to list available commands.\"");
+                lines.add("shelbie:echo \"  - Enter @|bold shutdown|@ or hit @|bold CTRL^D|@ key to shutdown the platform.\"");
+                lines.add("shelbie:echo \"\"");
+                if (redirectedSystemOut != null) {
+                    lines.add("shelbie:echo \"System.out redirected to ".concat(redirectedSystemOut.getPath()).concat("\""));
+                }
+                if (redirectedSystemErr != null) {
+                    lines.add("shelbie:echo \"System.err redirected to ".concat(redirectedSystemErr.getPath()).concat("\""));
+                }
+                if (redirectedSystemOut != null || redirectedSystemErr != null) {
+                    lines.add("shelbie:echo \"\"");
+                }
+                lines.add("newsfeed:get-news");
+                return lines.iterator();
             }
 
             @Override
@@ -77,5 +95,13 @@ public class PeergreenBrandingService implements BrandingService {
     @Override
     public Map<String, Object> getVariables() {
         return Collections.emptyMap();
+    }
+
+    public void setRedirectedSystemOut(File redirectedSystemOut) {
+        this.redirectedSystemOut = redirectedSystemOut;
+    }
+
+    public void setRedirectedSystemErr(File redirectedSystemErr) {
+        this.redirectedSystemErr = redirectedSystemErr;
     }
 }

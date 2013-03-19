@@ -129,7 +129,7 @@ public class Kernel {
     /**
      * Shelbie Branding service;
      */
-    private BrandingService brandingService;
+    private PeergreenBrandingService brandingService;
 
     /**
      * Shelbie Prompt service;
@@ -206,6 +206,16 @@ public class Kernel {
      * Peergreen PrintStream for errors.
      */
     private PrintStream err;
+
+    /**
+     * Peergreen file which contains System.out
+     */
+    private File fileSystemOut;
+
+    /**
+     * Peergreen file which contains System.err
+     */
+    private File fileSystemErr;
 
 
     /**
@@ -359,14 +369,16 @@ public class Kernel {
             // Wrap the streams
             this.in = new ByteArrayInputStream(new byte[0]);
             System.setIn(this.in);
+            this.fileSystemOut = new File(logs, "system.out");
             try {
-                this.out = new PrintStream(new File(logs, "system.out"));
+                this.out = new PrintStream(fileSystemOut);
             } catch (FileNotFoundException e) {
                 throw new IllegalStateException("Cannot create log file", e);
             }
             System.setOut(this.out);
+            this.fileSystemErr = new File(logs, "system.err");
             try {
-                this.err = new PrintStream(new File(logs, "system.err"));
+                this.err = new PrintStream(fileSystemErr);
             } catch (FileNotFoundException e) {
                 throw new IllegalStateException("Cannot create log file", e);
             }
@@ -478,6 +490,9 @@ public class Kernel {
     private void registerServices() {
         // create missing services
         this.brandingService = new PeergreenBrandingService();
+        brandingService.setRedirectedSystemOut(fileSystemOut);
+        brandingService.setRedirectedSystemErr(fileSystemErr);
+
         this.promptService = new PeergreenPromptService(platformContext);
         this.systemService = new PeergreenSystemService(platformContext);
         this.systemService.setIn(systemIn);
