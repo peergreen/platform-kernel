@@ -215,7 +215,6 @@ public class BuildPlatformMojo extends AbstractMojo {
         // -------------------------------------
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().putValue("Main-Class", mainClass);
-        manifest.getMainAttributes().putValue("Class-Path", path(LIB, frameworkFile, launcherFile));
         try {
             ((JarArchiver) archiver).addConfiguredManifest(manifest);
         } catch (ManifestException e) {
@@ -230,20 +229,6 @@ public class BuildPlatformMojo extends AbstractMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("Cannot assemble platform", e);
         }
-    }
-
-    private String path(String prefix, File... files) {
-        StringBuilder sb = new StringBuilder();
-        for (File file : files) {
-            if (file != null) {
-                if (sb.length() != 0) {
-                    sb.append(" ");
-                }
-                sb.append(prefix);
-                sb.append(file.getName());
-            }
-        }
-        return sb.toString();
     }
 
     private int findLevel(Artifact artifact) {
