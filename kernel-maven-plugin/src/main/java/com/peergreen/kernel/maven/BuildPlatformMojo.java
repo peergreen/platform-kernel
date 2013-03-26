@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Pack200;
 import java.util.jar.Pack200.Packer;
@@ -73,6 +74,11 @@ public class BuildPlatformMojo extends AbstractMojo {
 
     @Component
     private MavenProject project;
+
+
+    @Parameter(defaultValue = "Peergreen Platform")
+    private String platformName;
+
 
     @Parameter(defaultValue = "org.apache.felix/org.apache.felix.framework/4.0.3")
     private String framework;
@@ -214,7 +220,17 @@ public class BuildPlatformMojo extends AbstractMojo {
         // 4. Create Manifest
         // -------------------------------------
         Manifest manifest = new Manifest();
-        manifest.getMainAttributes().putValue("Main-Class", mainClass);
+        Attributes attributes = manifest.getMainAttributes();
+        attributes.putValue(Attributes.Name.MAIN_CLASS.toString(), mainClass);
+
+        attributes.putValue(Attributes.Name.IMPLEMENTATION_VENDOR.toString(), "Peergreen SAS");
+        attributes.putValue(Attributes.Name.IMPLEMENTATION_VERSION.toString(), project.getVersion());
+
+        attributes.putValue(Attributes.Name.SPECIFICATION_VENDOR.toString(), "Peergreen SAS");
+        attributes.putValue(Attributes.Name.SPECIFICATION_VERSION.toString(), project.getVersion());
+
+        attributes.putValue("Peergreen-Platform-Name", platformName);
+
         try {
             ((JarArchiver) archiver).addConfiguredManifest(manifest);
         } catch (ManifestException e) {
