@@ -626,7 +626,8 @@ public class Kernel {
             }
 
             // Skip console startup ?
-            if (!consoleAtStartup && location.contains("startup-console")) {
+            // TODO Normalize console artifact names
+            if (!consoleAtStartup && (location.contains("local-console") || location.contains("startup-console"))) {
                 continue;
             }
 
