@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,10 @@ import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.jar.Manifest;
 import org.codehaus.plexus.archiver.jar.ManifestException;
+
+import com.peergreen.jartransformer.JarTransformer;
+import com.peergreen.jartransformer.JarTransformerException;
+import com.peergreen.jartransformer.adapter.expiration.ExpirationDateClassAdapterFactory;
 
 /**
  * @author Guillaume Sauthier
@@ -103,6 +108,12 @@ public class BuildPlatformMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "true")
     private boolean usePack200;
+
+    @Parameter(defaultValue = "true")
+    private boolean addExpiration;
+
+    @Parameter(defaultValue = "${project.build.directory}/jartransformer")
+    private File jartransformerDir;
 
     @Parameter(defaultValue = "${project.build.directory}/pack200")
     private File pack200Dir;
@@ -214,6 +225,28 @@ public class BuildPlatformMojo extends AbstractMojo {
         }
         File launcherFile = resolveArtifact(launcher);
         if (launcherFile != null) {
+
+            // add expiration time in the launcher jar
+            if (addExpiration) {
+                jartransformerDir.mkdirs();
+                File transformedFile = new File(jartransformerDir, "launcher.jar");
+                JarTransformer jarTransformer = new JarTransformer();
+                //FIXME : configure through the pom.xml
+                // expiry of 90 days
+                long EXPIRY = 90 * 24 * 60 * 60 * 1000L;
+                long expirationDate = System.currentTimeMillis() + EXPIRY;
+
+                ExpirationDateClassAdapterFactory factory = new ExpirationDateClassAdapterFactory(expirationDate);
+                getLog().info("Setting expiration date to " + new Date(expirationDate));
+                jarTransformer.addClassAdapterFactory(factory);
+                try {
+                    jarTransformer.transform(launcherFile, transformedFile);
+                } catch (JarTransformerException e) {
+                    throw new MojoExecutionException("Cannot transform bytecode of the given jar", e);
+                }
+                launcherFile = transformedFile;
+            }
+
             archiver.addFile(launcherFile, LIB + launcherFile.getName());
         }
 
