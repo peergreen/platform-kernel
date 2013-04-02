@@ -66,7 +66,7 @@ import com.peergreen.jartransformer.adapter.expiration.ExpirationDateClassAdapte
       defaultPhase = LifecyclePhase.PACKAGE,
       requiresProject = true,
       requiresDependencyCollection = ResolutionScope.RUNTIME)
-public class BuildPlatformMojo extends AbstractMojo {
+public class BuildServerMojo extends AbstractMojo {
 
     private static final String BUNDLES = "bundles";
     private static final String LIB = "lib/";
@@ -81,8 +81,8 @@ public class BuildPlatformMojo extends AbstractMojo {
     private MavenProject project;
 
 
-    @Parameter(defaultValue = "Peergreen Platform")
-    private String platformName;
+    @Parameter(defaultValue = "Peergreen Server")
+    private String serverName;
 
 
     @Parameter(defaultValue = "org.apache.felix/org.apache.felix.framework/4.0.3")
@@ -91,13 +91,13 @@ public class BuildPlatformMojo extends AbstractMojo {
     @Parameter(defaultValue = "org.osgi/org.osgi.core/4.3.1")
     private String specification;
 
-    @Parameter(defaultValue = "com.peergreen.kernel/kernel-launcher/1.0.0-SNAPSHOT")
+    @Parameter
     private String launcher;
 
-    @Parameter(defaultValue = "com.peergreen.osgi.frameworkfactory/peergreen-osgi-frameworkfactory/1.0.0-SNAPSHOT")
+    @Parameter(defaultValue = "com.peergreen.osgi.frameworkfactory/peergreen-osgi-frameworkfactory/1.0.0")
     private String frameworkWrapper;
 
-    @Parameter(defaultValue = "com.peergreen.bootstrap/peergreen-bootstrap/1.0.0-SNAPSHOT")
+    @Parameter(defaultValue = "com.peergreen.bootstrap/peergreen-bootstrap/1.0.0")
     private String bootstrap;
 
     @Parameter(defaultValue = "com.peergreen.bootstrap.Bootstrap")
@@ -262,7 +262,7 @@ public class BuildPlatformMojo extends AbstractMojo {
         attributes.putValue(Attributes.Name.SPECIFICATION_VENDOR.toString(), "Peergreen SAS");
         attributes.putValue(Attributes.Name.SPECIFICATION_VERSION.toString(), project.getVersion());
 
-        attributes.putValue("Peergreen-Platform-Name", platformName);
+        attributes.putValue("Peergreen-Server-Name", serverName);
 
         try {
             ((JarArchiver) archiver).addConfiguredManifest(manifest);
@@ -276,7 +276,7 @@ public class BuildPlatformMojo extends AbstractMojo {
             archiver.createArchive();
             project.getArtifact().setFile(destFile);
         } catch (IOException e) {
-            throw new MojoExecutionException("Cannot assemble platform", e);
+            throw new MojoExecutionException("Cannot assemble server", e);
         }
     }
 
@@ -292,6 +292,13 @@ public class BuildPlatformMojo extends AbstractMojo {
                 bundleToLevel.put(bundle, sl);
             }
         }
+
+        if (launcher == null) {
+            // same version
+            launcher = "com.peergreen.kernel/kernel-launcher/" + project.getVersion();
+        }
+
+
     }
 
     private File resolveArtifact(String artifact) throws MojoFailureException {

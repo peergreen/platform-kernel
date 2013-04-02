@@ -4,7 +4,7 @@
   <components>
     <component>
       <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
-      <role-hint>platform</role-hint>
+      <role-hint>peergreen-server</role-hint>
       <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
       <configuration>
         <lifecycles>
@@ -23,15 +23,15 @@
 
     <component>
       <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
-      <role-hint>platform</role-hint>
+      <role-hint>peergreen-server</role-hint>
       <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
       <configuration>
-        <type>platform</type>
+        <type>peergreen-server</type>
         <includesDependencies>false</includesDependencies>
         <language>java</language>
         <extension>jar</extension>
         <addedToClasspath>false</addedToClasspath>
-        <packaging>platform</packaging>
+        <packaging>peergreen-server</packaging>
       </configuration>
     </component>
   </components>
