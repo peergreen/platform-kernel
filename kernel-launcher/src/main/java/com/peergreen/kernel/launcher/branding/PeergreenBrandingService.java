@@ -39,23 +39,27 @@ public class PeergreenBrandingService implements BrandingService {
 
 
     private static final String BANNER = "" +
-            "     ___                                                       ___  _         _     __                         \n" +
-            "    / _ \\  ___   ___  _ __   __ _  _ __   ___   ___  _ __     / _ \\| |  __ _ | |_  / _|  ___   _ __  _ __ ___  \n" +
-            "   / /_)/ / _ \\ / _ \\| '__| / _` || '__| / _ \\ / _ \\| '_ \\   / /_)/| | / _` || __|| |_  / _ \\ | '__|| '_ ` _ \\ \n" +
-            "  / ___/ |  __/|  __/| |   | (_| || |   |  __/|  __/| | | | / ___/ | || (_| || |_ |  _|| (_) || |   | | | | | |\n" +
-            "  \\/      \\___| \\___||_|    \\__, ||_|    \\___| \\___||_| |_| \\/     |_| \\__,_| \\__||_|   \\___/ |_|   |_| |_| |_|\n" +
-            "                            |___/\n" +
-            "                                           ___                          _ _          ___    _ _ _   _          \n" +
-            "                                          / __|___ _ __  _ __ _  _ _ _ (_) |_ _  _  | __|__| (_) |_(_)___ _ _  \n" +
-            "                                         | (__/ _ \\ '  \\| '  \\ || | ' \\| |  _| || | | _|/ _` | |  _| / _ \\ ' \\ \n" +
-            "                                          \\___\\___/_|_|_|_|_|_\\_,_|_||_|_|\\__|\\_, | |___\\__,_|_|\\__|_\\___/_||_|\n" +
-            "                                                                              |__/";
+    " ____                                           ____                           \r\n" +
+    "|  _ \\ ___  ___ _ __ __ _ _ __ ___  ___ _ __   / ___|  ___ _ ____   _____ _ __ \r\n" +
+    "| |_) / _ \\/ _ \\ '__/ _` | '__/ _ \\/ _ \\ '_ \\  \\___ \\ / _ \\ '__\\ \\ / / _ \\ '__|\r\n" +
+    "|  __/  __/  __/ | | (_| | | |  __/  __/ | | |  ___) |  __/ |   \\ V /  __/ |   \r\n" +
+    "|_|   \\___|\\___|_|  \\__, |_|  \\___|\\___|_| |_| |____/ \\___|_|    \\_/ \\___|_|   \r\n" +
+    "                    |___/____                                      _ _         \r\n" +
+    "                        / ___|___  _ __ ___  _ __ ___  _   _ _ __ (_) |_ _   _ \r\n" +
+    "                       | |   / _ \\| '_ ` _ \\| '_ ` _ \\| | | | '_ \\| | __| | | |\r\n" +
+    "                       | |__| (_) | | | | | | | | | | | |_| | | | | | |_| |_| |\r\n" +
+    "                        \\____\\___/|_| |_| |_|_| |_| |_|\\__,_|_| |_|_|\\__|\\__, |\r\n" +
+    "                                                _____    _ _ _   _       |___/ \r\n" +
+    "                                               | ____|__| (_) |_(_) ___  _ __  \r\n" +
+    "                                               |  _| / _` | | __| |/ _ \\| '_ \\ \r\n" +
+    "                                               | |__| (_| | | |_| | (_) | | | |\r\n" +
+    "                                               |_____\\__,_|_|\\__|_|\\___/|_| |_|\r\n";
 
     @Override
     public String getBanner(boolean ansi) {
-        // 0;34m is BLUE color code
-        // 0m is no color (reset)
-        return ansi ? "\33[0;34m" + BANNER + "\33[0m" : BANNER;
+        // 1m is bold code
+        // 0m is reset of color
+        return ansi ? "\33[1m" + BANNER + "\33[0m" : BANNER;
     }
 
     @Override
@@ -67,15 +71,15 @@ public class PeergreenBrandingService implements BrandingService {
             public Iterator<String> iterator() {
                 List<String> lines = new ArrayList<>();
 
-                lines.add("shelbie:echo \"Welcome on @|bold,blue Peergreen Platform|@:\"");
+                lines.add("shelbie:echo \"Welcome on @|bold Peergreen Server|@:\"");
                 lines.add("shelbie:echo \"  - Enter @|bold help|@ or hit @|bold TAB|@ key to list available commands.\"");
                 lines.add("shelbie:echo \"  - Enter @|bold shutdown|@ or hit @|bold CTRL^D|@ key to shutdown the platform.\"");
                 lines.add("shelbie:echo \"\"");
                 if (redirectedSystemOut != null) {
-                    lines.add("shelbie:echo \"System.out redirected to ".concat(redirectedSystemOut.getPath()).concat("\""));
+                    lines.add("shelbie:echo \"System.out redirected to ".concat(redirectedSystemOut.getPath().replace("\\", "\\\\")).concat("\""));
                 }
                 if (redirectedSystemErr != null) {
-                    lines.add("shelbie:echo \"System.err redirected to ".concat(redirectedSystemErr.getPath()).concat("\""));
+                    lines.add("shelbie:echo \"System.err redirected to ".concat(redirectedSystemErr.getPath().replace("\\", "\\\\")).concat("\""));
                 }
                 if (redirectedSystemOut != null || redirectedSystemErr != null) {
                     lines.add("shelbie:echo \"\"");
@@ -104,4 +108,5 @@ public class PeergreenBrandingService implements BrandingService {
     public void setRedirectedSystemErr(File redirectedSystemErr) {
         this.redirectedSystemErr = redirectedSystemErr;
     }
+
 }
