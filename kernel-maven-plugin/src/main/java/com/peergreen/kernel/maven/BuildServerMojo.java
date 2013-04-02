@@ -42,6 +42,7 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -80,6 +81,8 @@ public class BuildServerMojo extends AbstractMojo {
     @Component
     private MavenProject project;
 
+    @Component
+    private PluginDescriptor plugin;
 
     @Parameter(defaultValue = "Peergreen Server")
     private String serverName;
@@ -294,8 +297,8 @@ public class BuildServerMojo extends AbstractMojo {
         }
 
         if (launcher == null) {
-            // same version
-            launcher = "com.peergreen.kernel/kernel-launcher/" + project.getVersion();
+            // same version as this plugin
+            launcher = "com.peergreen.kernel/kernel-launcher/" + plugin.getVersion();
         }
 
 
