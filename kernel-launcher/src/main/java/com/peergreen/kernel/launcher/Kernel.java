@@ -70,6 +70,8 @@ import org.ow2.shelbie.core.identity.IdentityProvider;
 import org.ow2.shelbie.core.prompt.PromptService;
 import org.ow2.shelbie.core.system.SystemService;
 
+import com.peergreen.kernel.event.Event;
+import com.peergreen.kernel.event.EventFilter;
 import com.peergreen.kernel.event.EventKeeper;
 import com.peergreen.kernel.info.PlatformInfo;
 import com.peergreen.kernel.launcher.branding.PeergreenBrandingService;
@@ -107,11 +109,6 @@ public class Kernel {
      * Underlying OSGi Framework
      */
     private Framework framework;
-
-    /**
-     * Store data about the platform
-     */
-    private final DefaultPlatformInfo info = new DefaultPlatformInfo();
 
     /**
      * Bundle context of the platform
@@ -454,15 +451,11 @@ public class Kernel {
         platformContext.registerService(BrandingService.class.getName(), brandingService, null);
         platformContext.registerService(PromptService.class.getName(), promptService, null);
         platformContext.registerService(SystemService.class.getName(), systemService, null);
-        platformContext.registerService(PlatformInfo.class.getName(), info, null);
         platformContext.registerService(EventKeeper.class, eventKeeper, null);
 
         // Register platform related commands
         Dictionary<String, Object> dict = new Hashtable<String, Object>();
         dict.put("osgi.command.scope", "info");
-        dict.put("osgi.command.function", Infos.FUNCTIONS);
-        platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
-
         dict.put("osgi.command.function", Events.FUNCTIONS);
         platformContext.registerService(Events.class.getName(), new Events(eventKeeper), dict);
 
@@ -483,6 +476,40 @@ public class Kernel {
 
     }
 
+    /**
+     * Register info-related services of peergreen platform.
+     */
+    private void registerInfoServices() {
+
+        // Compute startup time (platform is ready - jvm started)
+        Event bootEvent = getMandatoryEvent(BOOT);
+        Event readyEvent = getMandatoryEvent(PLATFORM_READY);
+        DefaultPlatformInfo info = new DefaultPlatformInfo(bootEvent.getTimestamp(),
+                readyEvent.getTimestamp());
+        platformContext.registerService(PlatformInfo.class.getName(), info, null);
+
+        // Register platform related commands
+        Dictionary<String, Object> dict = new Hashtable<String, Object>();
+        dict.put("osgi.command.scope", "info");
+        dict.put("osgi.command.function", Infos.FUNCTIONS);
+        platformContext.registerService(Infos.class.getName(), new Infos(info), dict);
+    }
+
+    /**
+     * Return a named Event from the event keeper.
+     * We assume the event is found (no verification is performed).
+     *
+     * @param eventId Event identity
+     * @return the found Event or {@literal null} if not found
+     */
+    private Event getMandatoryEvent(final String eventId) {
+        return eventKeeper.getEvents(new EventFilter() {
+            @Override
+            public boolean accept(Event event) {
+                return eventId.equals(event.getId());
+            }
+        }).iterator().next();
+    }
 
     /**
      * Starts the OSGi {@link Framework}.
@@ -690,18 +717,6 @@ public class Kernel {
 
 
     /**
-     * Platform has successfully started. Add startup time
-     */
-    private void successfulStartup() {
-
-        // Sets the startup time
-        long startTime = info.getStartDate().getTime();
-        info.setStartupTime(System.currentTimeMillis() - startTime);
-
-    }
-
-
-    /**
      * Platform has failed. Prints the errors.
      */
     private void failedStartup() {
@@ -730,9 +745,8 @@ public class Kernel {
                     reporter.addMessage(new Message(Severity.ERROR, event.getThrowable(), event.getBundle()));
                     break;
                 case FrameworkEvent.STARTLEVEL_CHANGED:
-                    if (reporter.getErrors().isEmpty()) {
-                        successfulStartup();
-                    } else {
+                    registerInfoServices();
+                    if (!reporter.getErrors().isEmpty()) {
                         failedStartup();
                     }
             }

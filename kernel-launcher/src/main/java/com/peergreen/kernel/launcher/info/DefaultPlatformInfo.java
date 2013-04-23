@@ -23,23 +23,20 @@ import com.peergreen.kernel.info.JavaInfo;
 import com.peergreen.kernel.info.PlatformInfo;
 
 /**
- * Created by IntelliJ IDEA.
- * User: guillaume
- * Date: 15 sept. 2010
- * Time: 20:41:45
- * To change this template use File | Settings | File Templates.
+ * Group platform-related information together.
  */
 public class DefaultPlatformInfo implements PlatformInfo {
 
     private final UUID id;
     private final Date startDate;
-    private long startupTime;
+    private final long startupTime;
     private final JavaInfo javaInfo;
 
-    public DefaultPlatformInfo() {
+    public DefaultPlatformInfo(long javaBoot, long platformReady) {
         this.id = UUID.randomUUID();
-        this.startDate = new Date();
         this.javaInfo = new DefaultJavaInfo();
+        this.startDate = new Date(javaBoot);
+        this.startupTime = platformReady - javaBoot;
     }
 
     @Override
@@ -55,10 +52,6 @@ public class DefaultPlatformInfo implements PlatformInfo {
     @Override
     public long getStartupTime() {
         return startupTime;
-    }
-
-    public void setStartupTime(long startupTime) {
-        this.startupTime = startupTime;
     }
 
     @Override
