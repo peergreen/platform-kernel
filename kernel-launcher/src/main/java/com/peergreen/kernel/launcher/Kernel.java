@@ -233,7 +233,7 @@ public class Kernel {
 
     public Kernel() throws MalformedURLException, URISyntaxException {
 
-        // Store Sytem.*
+        // Store System.*
         this.systemIn = System.in;
         this.systemOut = System.out;
         this.systemErr = System.err;
