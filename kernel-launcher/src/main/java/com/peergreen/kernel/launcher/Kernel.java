@@ -87,6 +87,8 @@ import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
 import com.peergreen.kernel.launcher.system.PeergreenSystemService;
 import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
+import com.peergreen.kernel.launcher.util.Lists;
+import com.peergreen.kernel.launcher.util.Maps;
 
 /**
  * Kernel is the root class for embedding/starting Peergreen platform kernel.
@@ -255,46 +257,6 @@ public class Kernel {
         prepare(new HashMap<String, String>());
     }
 
-
-    /**
-     * Set the given value for the given key in the configuration only if the key is not already here
-     *
-     * @param map   the map containing the key/value
-     * @param key   the key to merge
-     * @param value the value to apply
-     */
-    private void set(Map<String, String> map, String key, String value) {
-        // key not yet present or ant to apply in all case
-        if (!map.containsKey(key)) {
-            map.put(key, value);
-            return;
-        }
-
-    }
-
-
-    /**
-     * Merge the given value for the given key in the configuration. If the key is not already here, just add it else merge it.
-     *
-     * @param map   the map containing the key/value
-     * @param key   the key to merge
-     * @param value the value to apply
-     */
-    private void merge(Map<String, String> map, String key, String value) {
-        // key not yet present, just add it
-        if (!map.containsKey(key)) {
-            map.put(key, value);
-            return;
-        }
-
-        // Key is here, needs to merge
-        String existingValue = map.get(key);
-        String newValue = existingValue.concat(",").concat(value);
-
-        map.put(key, newValue);
-
-    }
-
     /**
      * Creates the OSGi {@link Framework} from the OSGi {@link FrameworkFactory}<br>
      * Also add peergreen configuration for exporting some system packages
@@ -342,14 +304,14 @@ public class Kernel {
         packages.add(PromptService.class.getPackage().getName() + ";version=2.0");
         packages.add(SystemService.class.getPackage().getName() + ";version=2.0");
         packages.add(IdentityProvider.class.getPackage().getName() + ";version=2.0");
-        merge(configuration, org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, join(packages, ","));
+        Maps.merge(configuration, org.osgi.framework.Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, Lists.join(packages, ","));
 
         // Storage
-        set(configuration, org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
-        set(configuration, "osgi.install.area", configuration.get(org.osgi.framework.Constants.FRAMEWORK_STORAGE));
+        Maps.set(configuration, org.osgi.framework.Constants.FRAMEWORK_STORAGE, storage.getPath());
+        Maps.set(configuration, "osgi.install.area", configuration.get(org.osgi.framework.Constants.FRAMEWORK_STORAGE));
 
         // I need to force the Framework StartLevel here, we will move up the FSL after initialisation
-        set(configuration, org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
+        Maps.set(configuration, org.osgi.framework.Constants.FRAMEWORK_BEGINNING_STARTLEVEL, "1");
 
         framework = factory.newFramework(configuration);
 
@@ -384,17 +346,6 @@ public class Kernel {
             }
             System.setErr(this.err);
         }
-    }
-
-    private static String join(List<String> values, String separator) {
-        StringBuilder sb = new StringBuilder();
-        for (String value : values) {
-            if (sb.length() != 0) {
-                sb.append(separator);
-            }
-            sb.append(value);
-        }
-        return sb.toString();
     }
 
     private void initEventKeeper() {
