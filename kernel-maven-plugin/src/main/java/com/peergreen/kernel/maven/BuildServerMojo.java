@@ -64,9 +64,9 @@ import com.peergreen.jartransformer.adapter.expiration.ExpirationDateClassAdapte
  * @author Guillaume Sauthier
  */
 @Mojo(name = "build",
-      defaultPhase = LifecyclePhase.PACKAGE,
-      requiresProject = true,
-      requiresDependencyCollection = ResolutionScope.RUNTIME)
+        defaultPhase = LifecyclePhase.PACKAGE,
+        requiresProject = true,
+        requiresDependencyCollection = ResolutionScope.RUNTIME)
 public class BuildServerMojo extends AbstractMojo {
 
     private static final String BUNDLES = "bundles";
@@ -94,6 +94,9 @@ public class BuildServerMojo extends AbstractMojo {
     @Parameter(defaultValue = "org.osgi/org.osgi.core/4.3.1")
     private String specification;
 
+    /**
+     * Artifact coordinates are computed during {@link #init()} and are based on the version of the plugin itself.
+     */
     @Parameter
     private String launcher;
 
@@ -201,7 +204,7 @@ public class BuildServerMojo extends AbstractMojo {
                 File packedFile = new File(pack200Dir, localFile.getName().concat(".pack.gz"));
 
                 // compress localFile with pack200
-                try (JarFile jar = new JarFile(localFile);  GZIPOutputStream output = new GZIPOutputStream(new FileOutputStream(packedFile))) {
+                try (JarFile jar = new JarFile(localFile); GZIPOutputStream output = new GZIPOutputStream(new FileOutputStream(packedFile))) {
                     packer.pack(jar, output);
                 } catch (IOException e) {
                     throw new MojoExecutionException("Unable to pack the file '" + localFile + "' to pack200 format");
