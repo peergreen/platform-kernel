@@ -84,7 +84,7 @@ public class BuildServerMojo extends AbstractMojo {
     @Component
     private PluginDescriptor plugin;
 
-    @Parameter(defaultValue = "Peergreen Server")
+    @Parameter(defaultValue = "${project.name}")
     private String serverName;
 
 
