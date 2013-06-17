@@ -43,6 +43,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashMap;
@@ -215,6 +216,11 @@ public class Kernel {
      * Peergreen file which contains System.err
      */
     private File fileSystemErr;
+
+    /**
+     * Image of the Bundle of the Console.
+     */
+    private ConsoleBundle consoleBundle;
 
 
     /**
@@ -408,6 +414,7 @@ public class Kernel {
         // register services / listener callbacks
         registerServices();
 
+        Bundle console = null;
         // First boot, needs to install bundles
         // If not, framework has restored them
         if (firstBoot) {
@@ -425,12 +432,35 @@ public class Kernel {
             // Install any discovered bundles
             installedBundles = installBundles(resources);
 
+            console = findConsoleBundle(installedBundles);
+            if (console != null) {
+                // Do not keep it in the bundles list
+                installedBundles.remove(console);
+            }
+
             fireEvent(BUNDLES_INSTALL, "Bundles installed");
+        } else {
+            console = findConsoleBundle(Arrays.asList(platformContext.getBundles()));
+        }
+
+        // It may be possible that a kernel do not have the console installed
+        if (console != null) {
+            consoleBundle = new ConsoleBundle(console);
         }
 
         fireEvent(OSGI_INIT, "OSGi Framework initialized");
     }
 
+    private Bundle findConsoleBundle(Collection<Bundle> bundles) {
+        for (Bundle bundle : bundles) {
+            String symbolicName = bundle.getSymbolicName();
+            if (symbolicName.contains("local-console") || symbolicName.contains("startup-console")) {
+                return bundle;
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Register services of peergreen platform and listeners.
@@ -532,8 +562,11 @@ public class Kernel {
             fireEvent(BUNDLES_START, "Bundles started");
         }
 
-        // No startup console so display the banner
-        if (!consoleAtStartup) {
+        // Activate the console if requested (and console bundle is available)
+        if (consoleAtStartup && (consoleBundle != null)) {
+            consoleBundle.start();
+        } else {
+            // No startup console so display the banner instead
             systemOut.println(brandingService.getBanner(false));
         }
 
@@ -625,13 +658,6 @@ public class Kernel {
                 location = "reference:".concat(newLocation);
             }
 
-            // Skip console startup ?
-            // TODO Normalize console artifact names
-            if (!consoleAtStartup && (location.contains("local-console") || location.contains("startup-console"))) {
-                continue;
-            }
-
-
             Bundle bundle = null;
             try {
                 bundle = platformContext.installBundle(location);
@@ -667,12 +693,17 @@ public class Kernel {
 
         // Start the installed bundles, respecting the activation policy if needed
         for (Bundle bundle : bundles) {
-            try {
-                bundle.start(Bundle.START_ACTIVATION_POLICY);
-            } catch (BundleException e) {
-                // Should not happen now since the framework start level is not high enough to start this bundle
-                reporter.addMessage(new Message(Severity.ERROR, e, bundle));
-            }
+            startBundle(bundle, 0);
+        }
+    }
+
+    private void startBundle(final Bundle bundle, int options) {
+        try {
+            bundle.start(options | Bundle.START_ACTIVATION_POLICY);
+        } catch (BundleException e) {
+            // Should not happen now since the framework start level is not
+            // high enough to start this bundle
+            reporter.addMessage(new Message(Severity.ERROR, e, bundle));
         }
     }
 
@@ -781,6 +812,23 @@ public class Kernel {
 
     public void enableConsoleAtStartup() {
         this.consoleAtStartup = true;
+    }
+
+    private class ConsoleBundle {
+        private final Bundle bundle;
+
+        public ConsoleBundle(Bundle bundle) {
+            this.bundle = bundle;
+        }
+
+        public void start() {
+            if (bundle != null) {
+                // Console should be started transiently
+                // At next reboot, it will NOT be automatically started
+                startBundle(bundle, Bundle.START_TRANSIENT);
+            }
+        }
+
     }
 
 
