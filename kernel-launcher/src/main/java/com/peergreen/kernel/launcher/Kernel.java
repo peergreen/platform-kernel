@@ -296,8 +296,8 @@ public class Kernel {
 
         //FIXME: needed ?
         packages.add("org.w3c.dom.traversal");
-        packages.add("javax.transaction;version=1.1.0");
-        packages.add("javax.transaction.xa;version=1.1.0");
+        packages.add("javax.transaction;version=1.0.0");
+        packages.add("javax.transaction.xa;version=1.0.0");
         packages.add(EventKeeper.class.getPackage().getName());
         packages.add(PlatformInfo.class.getPackage().getName());
 
