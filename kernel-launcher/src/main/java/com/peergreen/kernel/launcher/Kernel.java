@@ -28,6 +28,8 @@ import static com.peergreen.kernel.launcher.event.Constants.OSGi.OSGI_START;
 import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_PREPARE;
 import static com.peergreen.kernel.launcher.event.Constants.Platform.PLATFORM_READY;
 import static com.peergreen.kernel.launcher.event.Constants.Properties.PROPERTY_BOOTSTRAP_BEGIN;
+import static com.peergreen.kernel.system.StreamType.ERR;
+import static com.peergreen.kernel.system.StreamType.OUT;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -88,10 +90,13 @@ import com.peergreen.kernel.launcher.scanner.BootstrapJarScanner;
 import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
+import com.peergreen.kernel.launcher.system.DefaultInterceptPrintStream;
 import com.peergreen.kernel.launcher.system.PeergreenSystemService;
+import com.peergreen.kernel.launcher.system.PrintStreamService;
 import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
 import com.peergreen.kernel.launcher.util.Lists;
 import com.peergreen.kernel.launcher.util.Maps;
+import com.peergreen.kernel.system.SystemStream;
 
 /**
  * Kernel is the root class for embedding/starting Peergreen platform kernel.
@@ -180,17 +185,17 @@ public class Kernel {
     /**
      * Original InputStream for reading.
      */
-    private final InputStream systemIn;
+    private final InputStream consoleSystemIn;
 
     /**
      * Original PrintStream for output.
      */
-    private final PrintStream systemOut;
+    private final PrintStream consoleSystemOut;
 
     /**
      * Original PrintStream for errors.
      */
-    private final PrintStream systemErr;
+    private final PrintStream consoleSystemErr;
 
     /**
      * Peergreen InputStream for reading.
@@ -200,12 +205,12 @@ public class Kernel {
     /**
      * Peergreen PrintStream for output.
      */
-    private PrintStream out;
+    private final DefaultInterceptPrintStream out;
 
     /**
      * Peergreen PrintStream for errors.
      */
-    private PrintStream err;
+    private final DefaultInterceptPrintStream err;
 
     /**
      * Peergreen file which contains System.out
@@ -239,9 +244,19 @@ public class Kernel {
     public Kernel() throws MalformedURLException, URISyntaxException {
 
         // Store System.*
-        this.systemIn = System.in;
-        this.systemOut = System.out;
-        this.systemErr = System.err;
+        this.consoleSystemIn = System.in;
+        this.consoleSystemOut = System.out;
+        this.consoleSystemErr = System.err;
+
+        // And now change System.out and System.err to a pluggable System stream
+        DefaultInterceptPrintStream interceptSystemOut = new DefaultInterceptPrintStream(OUT);
+        System.setOut(interceptSystemOut);
+        interceptSystemOut.addPrintStream(consoleSystemOut);
+        this.out = interceptSystemOut;
+        DefaultInterceptPrintStream interceptSystemErr = new DefaultInterceptPrintStream(ERR);
+        this.err = interceptSystemErr;
+        interceptSystemErr.addPrintStream(consoleSystemErr);
+       System.setErr(interceptSystemErr);
 
         initEventKeeper();
     }
@@ -300,6 +315,7 @@ public class Kernel {
         packages.add("javax.transaction.xa;version=1.0.0");
         packages.add(EventKeeper.class.getPackage().getName());
         packages.add(PlatformInfo.class.getPackage().getName());
+        packages.add(SystemStream.class.getPackage().getName() + ";version=1.0");
 
         // Shelbie packages as we provide our own implementation of these services
         // And that these services should be used instead of default one
@@ -335,19 +351,26 @@ public class Kernel {
             this.in = new ByteArrayInputStream(new byte[0]);
             System.setIn(this.in);
             this.fileSystemOut = new File(logs, "system.out");
+            PrintStream printSystemOut = null;
             try {
-                this.out = new PrintStream(fileSystemOut);
+                printSystemOut = new PrintStream(fileSystemOut);
             } catch (FileNotFoundException e) {
                 throw new IllegalStateException("Cannot create log file", e);
             }
-            System.setOut(this.out);
+            this.out.addPrintStream(printSystemOut);
             this.fileSystemErr = new File(logs, "system.err");
+            PrintStream printSystemErr = null;
             try {
-                this.err = new PrintStream(fileSystemErr);
+                printSystemErr = new PrintStream(fileSystemErr);
             } catch (FileNotFoundException e) {
                 throw new IllegalStateException("Cannot create log file", e);
             }
-            System.setErr(this.err);
+            this.err.addPrintStream(printSystemErr);
+
+            // we don't send anymore on the console
+            this.out.removePrintStream(consoleSystemOut);
+            this.err.removePrintStream(consoleSystemErr);
+
         }
     }
 
@@ -473,15 +496,21 @@ public class Kernel {
 
         this.promptService = new PeergreenPromptService(platformContext);
         this.systemService = new PeergreenSystemService(platformContext);
-        this.systemService.setIn(systemIn);
-        this.systemService.setOut(systemOut);
-        this.systemService.setErr(systemErr);
+        this.systemService.setIn(consoleSystemIn);
+        this.systemService.setOut(consoleSystemOut);
+        this.systemService.setErr(consoleSystemErr);
+
+        // Stream service
+        PrintStreamService streamService = new PrintStreamService(out, err, platformContext);
 
         // register them
+        platformContext.registerService(PrintStreamService.class.getName(), streamService, null);
         platformContext.registerService(BrandingService.class.getName(), brandingService, null);
         platformContext.registerService(PromptService.class.getName(), promptService, null);
         platformContext.registerService(SystemService.class.getName(), systemService, null);
         platformContext.registerService(EventKeeper.class, eventKeeper, null);
+
+
 
         // Register platform related commands
         Dictionary<String, Object> dict = new Hashtable<String, Object>();
@@ -567,7 +596,7 @@ public class Kernel {
             consoleBundle.start();
         } else {
             // No startup console so display the banner instead
-            systemOut.println(brandingService.getBanner(false));
+            out.println(brandingService.getBanner(false));
         }
 
         setFrameworkStartLevel();
@@ -575,10 +604,14 @@ public class Kernel {
         // Wait for the framework to stop indefinitely
         if (waitForStop) {
             framework.waitForStop(0);
+
+            this.out.flush();
+            this.err.flush();
+
             // restore streams
-            System.setIn(systemIn);
-            System.setOut(systemOut);
-            System.setErr(systemErr);
+            System.setIn(consoleSystemIn);
+            System.setOut(consoleSystemOut);
+            System.setErr(consoleSystemErr);
 
         }
     }
@@ -756,13 +789,13 @@ public class Kernel {
         List<Message> warnings = reporter.getWarnings();
         if (!warnings.isEmpty()) {
             for (Message warning : warnings) {
-                systemOut.printf("  * %s%n", warning.toString());
+                consoleSystemOut.printf("  * %s%n", warning.toString());
             }
         }
         List<Message> errors = reporter.getErrors();
         if (!errors.isEmpty()) {
             for (Message error : errors) {
-                systemErr.printf("  * %s%n", error.toString());
+                consoleSystemErr.printf("  * %s%n", error.toString());
             }
         }
     }
