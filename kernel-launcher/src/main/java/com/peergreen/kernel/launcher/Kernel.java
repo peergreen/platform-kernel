@@ -55,6 +55,12 @@ import java.util.Map;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Pack200;
 import java.util.jar.Pack200.Unpacker;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -198,6 +204,11 @@ public class Kernel {
     private final PrintStream consoleSystemErr;
 
     /**
+     * JDK Console Handler.
+     */
+    private ConsoleHandler jdkConsoleHandler;
+
+    /**
      * Peergreen InputStream for reading.
      */
     private InputStream in;
@@ -211,6 +222,11 @@ public class Kernel {
      * Peergreen PrintStream for errors.
      */
     private final DefaultInterceptPrintStream err;
+
+    /**
+     * Peergreen file which contains the JDK logs
+     */
+    private File fileJDKlogs;
 
     /**
      * Peergreen file which contains System.out
@@ -256,7 +272,7 @@ public class Kernel {
         DefaultInterceptPrintStream interceptSystemErr = new DefaultInterceptPrintStream(ERR);
         this.err = interceptSystemErr;
         interceptSystemErr.addPrintStream(consoleSystemErr);
-       System.setErr(interceptSystemErr);
+        System.setErr(interceptSystemErr);
 
         initEventKeeper();
     }
@@ -346,6 +362,28 @@ public class Kernel {
         if (consoleAtStartup) {
             File logs = new File(workDirectory, "logs");
             logs.mkdirs();
+
+            // Remove Console handler for the System.* logs
+            Logger rootLogger = LogManager.getLogManager().getLogger("");
+            Handler[] handlers = rootLogger.getHandlers();
+            for (Handler handler : handlers) {
+                if (handler instanceof ConsoleHandler) {
+                    rootLogger.removeHandler(handler);
+                    this.jdkConsoleHandler = (ConsoleHandler) handler;
+                }
+            }
+
+            // Adds a system.log file
+            this.fileJDKlogs = new File(logs, "system.log");
+            FileHandler fileHandler;
+            try {
+                fileHandler = new FileHandler(fileJDKlogs.getPath());
+                fileHandler.setFormatter(new SimpleFormatter());
+            } catch (SecurityException | IOException e) {
+                throw new IllegalStateException("Cannot create log file", e);
+            }
+            rootLogger.addHandler(fileHandler);
+
 
             // Wrap the streams
             this.in = new ByteArrayInputStream(new byte[0]);
@@ -491,6 +529,7 @@ public class Kernel {
     private void registerServices() {
         // create missing services
         this.brandingService = new PeergreenBrandingService();
+        brandingService.setRedirectedSystemLogs(fileJDKlogs);
         brandingService.setRedirectedSystemOut(fileSystemOut);
         brandingService.setRedirectedSystemErr(fileSystemErr);
 
@@ -612,6 +651,12 @@ public class Kernel {
             System.setIn(consoleSystemIn);
             System.setOut(consoleSystemOut);
             System.setErr(consoleSystemErr);
+
+            // Restore JDK console handler
+            if (jdkConsoleHandler != null) {
+                Logger rootLogger = LogManager.getLogManager().getLogger("");
+                rootLogger.addHandler(jdkConsoleHandler);
+            }
 
         }
     }

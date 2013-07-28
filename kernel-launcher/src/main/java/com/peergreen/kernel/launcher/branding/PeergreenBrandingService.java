@@ -35,6 +35,7 @@ public class PeergreenBrandingService implements BrandingService {
 
     private File redirectedSystemOut;
     private File redirectedSystemErr;
+    private File redirectedSystemLogs;
 
 
 
@@ -81,7 +82,11 @@ public class PeergreenBrandingService implements BrandingService {
                 if (redirectedSystemErr != null) {
                     lines.add("shelbie:echo \"System.err redirected to ".concat(redirectedSystemErr.getPath().replace("\\", "\\\\")).concat("\""));
                 }
-                if (redirectedSystemOut != null || redirectedSystemErr != null) {
+                if (redirectedSystemLogs != null) {
+                    lines.add("shelbie:echo \"System log redirected to ".concat(redirectedSystemLogs.getPath().replace("\\", "\\\\")).concat("\""));
+                }
+
+                if (redirectedSystemOut != null || redirectedSystemErr != null || redirectedSystemLogs != null) {
                     lines.add("shelbie:echo \"\"");
                 }
                 lines.add("newsfeed:get-news");
@@ -100,6 +105,11 @@ public class PeergreenBrandingService implements BrandingService {
     public Map<String, Object> getVariables() {
         return Collections.emptyMap();
     }
+
+    public void setRedirectedSystemLogs(File redirectedSystemLogs) {
+        this.redirectedSystemLogs = redirectedSystemLogs;
+    }
+
 
     public void setRedirectedSystemOut(File redirectedSystemOut) {
         this.redirectedSystemOut = redirectedSystemOut;
