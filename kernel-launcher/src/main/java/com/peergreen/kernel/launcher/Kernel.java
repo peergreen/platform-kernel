@@ -70,6 +70,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.osgi.framework.startlevel.BundleStartLevel;
@@ -88,6 +89,8 @@ import com.peergreen.kernel.launcher.event.Constants;
 import com.peergreen.kernel.launcher.event.DefaultEvent;
 import com.peergreen.kernel.launcher.event.DefaultEventKeeper;
 import com.peergreen.kernel.launcher.info.DefaultPlatformInfo;
+import com.peergreen.kernel.launcher.ipojo.IPOJOWaiter;
+import com.peergreen.kernel.launcher.ipojo.WaitingException;
 import com.peergreen.kernel.launcher.prompt.PeergreenPromptService;
 import com.peergreen.kernel.launcher.report.Message;
 import com.peergreen.kernel.launcher.report.Reporter;
@@ -639,6 +642,20 @@ public class Kernel {
         }
 
         setFrameworkStartLevel();
+
+        // Wait that iPOJO has terminated initial tasks
+        ServiceReference<?>[] queueServiceRefs = platformContext.getServiceReferences("org.apache.felix.ipojo.extender.queue.QueueService", "(ipojo.queue.mode=async)");
+        if (queueServiceRefs != null) {
+            Object queueService = platformContext.getService(queueServiceRefs[0]);
+            try {
+                new IPOJOWaiter(queueService).waitForStability();
+            } catch (WaitingException e) {
+                // cannot wait for stability
+                this.consoleSystemErr.println("Cannot reach 'ready' state.");
+                e.printStackTrace(this.consoleSystemErr);
+            }
+        }
+
 
         // Wait for the framework to stop indefinitely
         if (waitForStop) {
