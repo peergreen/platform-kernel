@@ -57,7 +57,7 @@ public class PeergreenSystemService implements SystemService {
 
     /**
      * Constructor.
-     * @param bundleContext the bundle context of the platform
+     * @param platformContext the bundle context of the platform
      */
     public PeergreenSystemService(BundleContext platformContext) {
         this.systemBundle = platformContext.getBundle(0);
@@ -98,7 +98,7 @@ public class PeergreenSystemService implements SystemService {
     }
 
     /**
-     * @return the inputstream {@link System.in}.
+     * @return the inputstream {@link System#in}.
      */
     @Override
     public InputStream getIn() {
@@ -106,7 +106,7 @@ public class PeergreenSystemService implements SystemService {
     }
 
     /**
-     * Sets the Stream for writing {@link System.out}.
+     * Sets the Stream for writing {@link System#out}.
      * @param out the given printstream
      */
     @Override
@@ -115,7 +115,7 @@ public class PeergreenSystemService implements SystemService {
     }
 
     /**
-     * @return the printstream {@link System.out}.
+     * @return the printstream {@link System#out}.
      */
     @Override
     public PrintStream getOut() {
@@ -123,7 +123,7 @@ public class PeergreenSystemService implements SystemService {
     }
 
     /**
-     * Sets the Stream for writing {@link System.err}.
+     * Sets the Stream for writing {@link System#err}.
      * @param err the given printstream
      */
     @Override
@@ -132,7 +132,7 @@ public class PeergreenSystemService implements SystemService {
     }
 
     /**
-     * @return the printstream {@link System.out}.
+     * @return the printstream {@link System#err}.
      */
     @Override
     public PrintStream getErr() {
