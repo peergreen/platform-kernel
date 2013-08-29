@@ -116,6 +116,29 @@ import com.peergreen.kernel.system.SystemStream;
 public class Kernel {
 
     /**
+     * Should the console be activated, disabled or automatically activated (best effort, depends on the system).
+     */
+    public enum ConsoleMode {
+        AUTO {
+            boolean launchConsole() {
+                return System.console() != null;
+            }
+        },
+        ACTIVE {
+            boolean launchConsole() {
+                return true;
+            }
+        },
+        DISABLED {
+            boolean launchConsole() {
+                return false;
+            }
+        };
+
+        abstract boolean launchConsole();
+    }
+
+    /**
      * Pattern used to extract the start level from the directory path
      */
     public static final Pattern STARTLEVEL_PATTERN = Pattern.compile(".*/bundles/(\\d+)/.*");
@@ -160,10 +183,7 @@ public class Kernel {
      */
     private boolean firstBoot;
 
-    /**
-     * Enable/Disable console at startup ?
-     */
-    private boolean consoleAtStartup = false;
+    private ConsoleMode consoleMode = ConsoleMode.DISABLED;
 
     /**
      * Bundles installed by the kernel and to be started at first boot.
@@ -256,7 +276,7 @@ public class Kernel {
     public static void main(String[] args) throws Exception {
         // FIXME : allows to disable the console from arguments ?
         Kernel kernel = new Kernel();
-        kernel.enableConsoleAtStartup();
+        kernel.consoleMode = ConsoleMode.AUTO;
         kernel.startKernel(true);
     }
 
@@ -362,7 +382,7 @@ public class Kernel {
     }
 
     private void initStreams() {
-        if (consoleAtStartup) {
+        if (consoleMode.launchConsole()) {
             File logs = new File(workDirectory, "logs");
             logs.mkdirs();
 
@@ -634,7 +654,7 @@ public class Kernel {
         }
 
         // Activate the console if requested (and console bundle is available)
-        if (consoleAtStartup && (consoleBundle != null)) {
+        if (consoleMode.launchConsole() && (consoleBundle != null)) {
             consoleBundle.start();
         } else {
             // No startup console so display the banner instead
@@ -906,7 +926,7 @@ public class Kernel {
 
 
     public void enableConsoleAtStartup() {
-        this.consoleAtStartup = true;
+        this.consoleMode = ConsoleMode.ACTIVE;
     }
 
     private class ConsoleBundle {
