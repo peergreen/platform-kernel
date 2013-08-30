@@ -23,11 +23,15 @@ import java.util.List;
  * @author Guillaume Sauthier
  */
 public class StartLevel {
-    private final int level = 1;
+    private int level = 1;
     private final List<String> bundles = new ArrayList<>();
 
     public int getLevel() {
         return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
     }
 
     public List<String> getBundles() {
