@@ -122,16 +122,19 @@ public class Kernel {
      */
     public enum ConsoleMode {
         AUTO {
+            @Override
             boolean launchConsole() {
                 return System.console() != null;
             }
         },
         ACTIVE {
+            @Override
             boolean launchConsole() {
                 return true;
             }
         },
         DISABLED {
+            @Override
             boolean launchConsole() {
                 return false;
             }
