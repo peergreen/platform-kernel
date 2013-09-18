@@ -100,8 +100,10 @@ import com.peergreen.kernel.launcher.scanner.BundleDirectoryScanner;
 import com.peergreen.kernel.launcher.shell.Events;
 import com.peergreen.kernel.launcher.shell.Infos;
 import com.peergreen.kernel.launcher.system.DefaultInterceptPrintStream;
+import com.peergreen.kernel.launcher.system.LogHandlerService;
 import com.peergreen.kernel.launcher.system.PeergreenSystemService;
 import com.peergreen.kernel.launcher.system.PrintStreamService;
+import com.peergreen.kernel.launcher.system.log.HistoryLoggerHandler;
 import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
 import com.peergreen.kernel.launcher.util.Lists;
 import com.peergreen.kernel.launcher.util.Maps;
@@ -230,6 +232,11 @@ public class Kernel {
      * JDK Console Handler.
      */
     private ConsoleHandler jdkConsoleHandler;
+
+    /**
+     * History logger handler.
+     */
+    private HistoryLoggerHandler historyLoggerHandler;
 
     /**
      * Peergreen InputStream for reading.
@@ -407,6 +414,11 @@ public class Kernel {
             }
             rootLogger.addHandler(fileHandler);
 
+            // Adds history logger
+            this.historyLoggerHandler = new HistoryLoggerHandler(200);
+            rootLogger.addHandler(historyLoggerHandler);
+
+
 
             // Wrap the streams
             this.in = new ByteArrayInputStream(new byte[0]);
@@ -565,13 +577,17 @@ public class Kernel {
         // Stream service
         PrintStreamService streamService = new PrintStreamService(out, err, platformContext);
 
+        // Log service
+        LogHandlerService logService = new LogHandlerService(historyLoggerHandler, platformContext);
+
+
         // register them
         platformContext.registerService(PrintStreamService.class.getName(), streamService, null);
+        platformContext.registerService(LogHandlerService.class.getName(), logService, null);
         platformContext.registerService(BrandingService.class.getName(), brandingService, null);
         platformContext.registerService(PromptService.class.getName(), promptService, null);
         platformContext.registerService(SystemService.class.getName(), systemService, null);
         platformContext.registerService(EventKeeper.class, eventKeeper, null);
-
 
 
         // Register platform related commands
