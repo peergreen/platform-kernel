@@ -30,6 +30,11 @@ import com.peergreen.kernel.system.SystemStream;
 public class HistoryLineOutputStream extends OutputStream {
 
     /**
+     * Known adapters.
+     */
+    private static final String[] KNOWN_ADAPTERS = new String[] {"org.slf4j.impl.Log4jLoggerAdapter", "org.apache.commons.logging.impl.Log4JLogger", "org.apache.felix.gogo.runtime.threadio.ThreadPrintStream"};
+
+    /**
      * History of the lines to keep.
      */
     private final LinkedList<StreamLine> bufferLines;
@@ -199,10 +204,30 @@ public class HistoryLineOutputStream extends OutputStream {
         StackTraceElement[] stackTraceElements = throwable.getStackTrace();
         int i = stackTraceElements.length -1;
         StackTraceElement stackTraceElement = stackTraceElements[i];
-        while (!(stackTraceElement.getClassName().startsWith(HistoryLineOutputStream.class.getPackage().getName()) && stackMethods.contains(stackTraceElement.getMethodName()))) {
+
+
+        // try to remove known adapters (like log4j, slf4j, etc)
+        boolean containsAdapter = false;
+        int j = i;
+        while (j > 0) {
+            StackTraceElement adapterStackTraceElement = stackTraceElements[j];
+
+            for (int a=0; a < KNOWN_ADAPTERS.length && !containsAdapter; a++) {
+                if (adapterStackTraceElement.getClassName().startsWith(KNOWN_ADAPTERS[a])) {
+                    i = j -1;
+                    containsAdapter = true;
+                }
+            }
+            j--;
+        }
+
+        // no adapter found, so search our lines
+        while (!containsAdapter && !(stackTraceElement.getClassName().startsWith(HistoryLineOutputStream.class.getPackage().getName()) && stackMethods.contains(stackTraceElement.getMethodName()))) {
             stackTraceElement = stackTraceElements[i];
             i--;
         }
+
+        // remove ourself
         if (i > 0) {
             stackTraceElement = stackTraceElements[i + 2];
         }
