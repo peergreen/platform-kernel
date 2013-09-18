@@ -362,8 +362,8 @@ public class Kernel {
         packages.add("org.w3c.dom.traversal");
         packages.add("javax.transaction;version=1.0.0");
         packages.add("javax.transaction.xa;version=1.0.0");
-        packages.add(EventKeeper.class.getPackage().getName());
-        packages.add(PlatformInfo.class.getPackage().getName());
+        packages.add(EventKeeper.class.getPackage().getName() + ";version=1.0");
+        packages.add(PlatformInfo.class.getPackage().getName() + ";version=1.0");
         packages.add(SystemStream.class.getPackage().getName() + ";version=1.0");
 
         // Shelbie packages as we provide our own implementation of these services
