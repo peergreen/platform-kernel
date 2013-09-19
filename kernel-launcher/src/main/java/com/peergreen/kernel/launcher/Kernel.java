@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -75,6 +77,7 @@ import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.osgi.framework.startlevel.BundleStartLevel;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
+import org.osgi.service.log.LogListener;
 import org.ow2.shelbie.core.branding.BrandingService;
 import org.ow2.shelbie.core.identity.IdentityProvider;
 import org.ow2.shelbie.core.prompt.PromptService;
@@ -104,6 +107,9 @@ import com.peergreen.kernel.launcher.system.LogHandlerService;
 import com.peergreen.kernel.launcher.system.PeergreenSystemService;
 import com.peergreen.kernel.launcher.system.PrintStreamService;
 import com.peergreen.kernel.launcher.system.log.HistoryLoggerHandler;
+import com.peergreen.kernel.launcher.system.log.LogListenerInvocationHandler;
+import com.peergreen.kernel.launcher.system.log.LogReaderServiceTracker;
+import com.peergreen.kernel.launcher.system.log.OSGiLogEntryListener;
 import com.peergreen.kernel.launcher.thread.PeergreenThreadGroup;
 import com.peergreen.kernel.launcher.util.Lists;
 import com.peergreen.kernel.launcher.util.Maps;
@@ -583,10 +589,12 @@ public class Kernel {
         // Log service
         LogHandlerService logService = new LogHandlerService(historyLoggerHandler, platformContext);
 
+        initLogListener();
 
         // register them
         platformContext.registerService(PrintStreamService.class.getName(), streamService, null);
         platformContext.registerService(LogHandlerService.class.getName(), logService, null);
+
         platformContext.registerService(BrandingService.class.getName(), brandingService, null);
         platformContext.registerService(PromptService.class.getName(), promptService, null);
         platformContext.registerService(SystemService.class.getName(), systemService, null);
@@ -615,6 +623,33 @@ public class Kernel {
         });
 
     }
+
+
+    /**
+     *
+     */
+    protected void initLogListener() {
+
+        OSGiLogEntryListener logEntryListener = new OSGiLogEntryListener();
+        InvocationHandler invocationHandler = new LogListenerInvocationHandler(logEntryListener);
+
+        // Try to get Synchronous Listener of Eclipse
+        Class<?> logListenerInterface = null;
+        try {
+            logListenerInterface = Kernel.class.getClassLoader().loadClass("org.eclipse.equinox.log.SynchronousLogListener");
+        } catch (ClassNotFoundException e) {
+            // Not available, switch back to LogListener
+            logListenerInterface = LogListener.class;
+        }
+
+        LogListener interceptedLogListener = (LogListener) Proxy.newProxyInstance(Kernel.class.getClassLoader(), new Class[] {logListenerInterface}, invocationHandler);
+
+        LogReaderServiceTracker logReaderServiceTracker = new LogReaderServiceTracker(interceptedLogListener, platformContext);
+        logReaderServiceTracker.open();
+
+
+    }
+
 
     /**
      * Register info-related services of peergreen platform.

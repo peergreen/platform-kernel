@@ -25,6 +25,17 @@ import com.peergreen.kernel.system.LogListener;
 public class HistoryLoggerHandler extends Handler {
 
     /**
+     * Known adapters.
+     */
+    private static final String[] KNOWN_ADAPTERS = new String[] {"org.eclipse.equinox.log.internal.ExtendedLogReaderServiceFactory", "org.apache.felix.ipojo.util.Logger"};
+
+    /**
+     * Drop Adapters.
+     */
+    private static final String[] DROP_ADAPTERS = new String[] {"org.eclipse.equinox.log.internal.LogServiceManager"};
+
+
+    /**
      * Listeners.
      */
     private final List<LogListener> listeners;
@@ -72,6 +83,48 @@ public class HistoryLoggerHandler extends Handler {
         if (records.size() == size) {
             records.remove(0);
         }
+
+        // Change the record
+
+        // Try to find the caller
+        Throwable throwable = new Throwable();
+        StackTraceElement[] stackTraceElements = throwable.getStackTrace();
+        int i = stackTraceElements.length -1;
+        StackTraceElement stackTraceElement = stackTraceElements[i];
+
+        // try to remove known adapters (like log4j, slf4j, etc)
+        boolean containsAdapter = false;
+        int j = i;
+        while (j > 0) {
+            StackTraceElement adapterStackTraceElement = stackTraceElements[j];
+
+            for (int a=0; a < KNOWN_ADAPTERS.length && !containsAdapter; a++) {
+                if (adapterStackTraceElement.getClassName().startsWith(KNOWN_ADAPTERS[a])) {
+                    i = j -1;
+                    containsAdapter = true;
+                }
+            }
+            j--;
+        }
+
+        // Change caller
+        if (containsAdapter) {
+            // remove ourself
+            if (i > 0) {
+                stackTraceElement = stackTraceElements[i + 2];
+            }
+            record.setSourceClassName(stackTraceElement.getClassName());
+            record.setSourceMethodName(stackTraceElement.getMethodName());
+        }
+
+        for (int a = 0; a < DROP_ADAPTERS.length; a++) {
+            if (DROP_ADAPTERS[a].equals(record.getSourceClassName())) {
+                return;
+            }
+        }
+
+
+
         // add the record
         records.add(record);
 
