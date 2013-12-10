@@ -66,6 +66,7 @@ import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
+import javax.management.MBeanServer;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -599,7 +600,7 @@ public class Kernel {
         platformContext.registerService(PromptService.class.getName(), promptService, null);
         platformContext.registerService(SystemService.class.getName(), systemService, null);
         platformContext.registerService(EventKeeper.class, eventKeeper, null);
-
+        platformContext.registerService(MBeanServer.class, ManagementFactory.getPlatformMBeanServer(), null);
 
         // Register platform related commands
         Dictionary<String, Object> dict = new Hashtable<String, Object>();
