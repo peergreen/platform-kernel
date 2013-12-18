@@ -16,7 +16,10 @@
 
 package com.peergreen.kernel.launcher.branding;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -60,7 +63,25 @@ public class PeergreenBrandingService implements BrandingService {
     public String getBanner(boolean ansi) {
         // 1m is bold code
         // 0m is reset of color
-        return ansi ? "\33[1m" + BANNER + "\33[0m" : BANNER;
+        if (ansi) {
+            StringBuilder sb = new StringBuilder();
+            try(BufferedReader reader = new BufferedReader(new StringReader(BANNER))) {
+
+                // Wrap each line in bold/reset instructions
+                String line;
+                while((line = reader.readLine()) != null) {
+                    sb.append("\33[1m");
+                    sb.append(line);
+                    sb.append("\33[0m");
+                    sb.append("\r\n");
+                }
+
+                return sb.toString();
+            } catch (IOException e) {
+                return BANNER;
+            }
+        }
+        return BANNER;
     }
 
     @Override
